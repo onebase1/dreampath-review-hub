@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Check, X } from "lucide-react";
+import { Calendar, Check, X, ImageIcon } from "lucide-react";
 import { ContentItem } from "@/types/content";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -11,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { submitAirtableFeedback } from "@/services/airtableService";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 interface ContentCardProps {
   item: ContentItem;
@@ -22,6 +24,7 @@ const ContentCard = ({ item, onStatusUpdate }: ContentCardProps) => {
   const [feedbackType, setFeedbackType] = useState<string>("prompt_edit");
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { toast } = useToast();
 
   const dateFormatted = format(new Date(item.dateCreated), "MMM dd, yyyy h:mm a");
@@ -75,28 +78,43 @@ const ContentCard = ({ item, onStatusUpdate }: ContentCardProps) => {
     }
   };
 
+  const handleImageError = () => {
+    console.log("Image failed to load:", item.imageUrl);
+    setImageError(true);
+  };
+
   return (
     <>
       <Card className="content-card animate-fade-in">
         <CardContent className="p-0">
           <div className="relative">
-            <img 
-              src={item.imageUrl} 
-              alt={item.title} 
-              className="content-card-image"
-            />
-            <Badge 
-              className={`absolute top-2 right-2 ${
-                item.urgency === 'high' ? 'bg-dreampath-red' : 'bg-gray-500'
-              }`}
-            >
-              {item.urgency === 'high' ? 'Urgent' : 'Normal'}
-            </Badge>
-            <Badge 
-              className="absolute top-2 left-2 bg-dreampath-purple"
-            >
-              {item.type}
-            </Badge>
+            <AspectRatio ratio={16 / 9} className="bg-gray-100">
+              {!imageError ? (
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.title} 
+                  className="content-card-image object-cover w-full h-full rounded-t-lg"
+                  onError={handleImageError}
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-t-lg">
+                  <ImageIcon className="h-12 w-12 text-gray-400" />
+                  <p className="text-sm text-gray-500 mt-2">Image unavailable</p>
+                </div>
+              )}
+              <Badge 
+                className={`absolute top-2 right-2 ${
+                  item.urgency === 'high' ? 'bg-dreampath-red' : 'bg-gray-500'
+                }`}
+              >
+                {item.urgency === 'high' ? 'Urgent' : 'Normal'}
+              </Badge>
+              <Badge 
+                className="absolute top-2 left-2 bg-dreampath-purple"
+              >
+                {item.type}
+              </Badge>
+            </AspectRatio>
           </div>
           <div className="p-4">
             <h3 className="font-bold text-lg mb-1">{item.title}</h3>

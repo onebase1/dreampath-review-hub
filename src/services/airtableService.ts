@@ -3,7 +3,7 @@ import { ContentItem } from "@/types/content";
 
 // Airtable API constants
 const AIRTABLE_API_KEY = "pate5bY8apa199fvx.a8672b97f4a5b27e34764abd801cf071f3b8b6462d8893be044fdc3e0e694ea3";
-const AIRTABLE_BASE_ID = "Social Media Poster";
+const AIRTABLE_BASE_ID = "appZhJda3P1E7nURe"; // Updated with correct base ID format
 const AIRTABLE_API_URL = "https://api.airtable.com/v0";
 
 /**
@@ -11,8 +11,11 @@ const AIRTABLE_API_URL = "https://api.airtable.com/v0";
  */
 export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
   try {
+    // Using console.log to help with debugging
+    console.log("Fetching from Airtable...");
+    
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Content`, // Assuming "Content" is your table name
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Content`, // Content table name
       {
         method: "GET",
         headers: {
@@ -23,20 +26,29 @@ export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
     );
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Airtable API error response:", errorText);
       throw new Error(`Airtable API error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("Airtable data received:", data);
+    
+    // Defensive check for empty or malformed data
+    if (!data || !data.records || !Array.isArray(data.records)) {
+      console.error("Airtable returned unexpected data structure:", data);
+      return [];
+    }
     
     // Map Airtable records to ContentItem format
     return data.records.map((record: any) => {
-      const fields = record.fields;
+      const fields = record.fields || {};
       return {
         id: record.id,
         type: mapContentType(fields.ContentType) || "image",
         title: fields.Title || "Untitled Content",
         caption: fields.Caption || "",
-        imageUrl: fields.ImageURL || "https://via.placeholder.com/600x400?text=Image+Not+Available",
+        imageUrl: fields.ImageURL || fields.Image?.[0]?.url || "https://via.placeholder.com/600x400?text=Image+Not+Available",
         dateCreated: fields.DateCreated || new Date().toISOString(),
         status: "pending",
         urgency: fields.Urgency === "High" ? "high" : "normal"
@@ -87,6 +99,8 @@ export const updateAirtableContentStatus = async (
     );
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Airtable update error response:", errorText);
       throw new Error(`Airtable API error: ${response.status}`);
     }
 
@@ -107,7 +121,7 @@ export const submitAirtableFeedback = async (
 ): Promise<boolean> => {
   try {
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`, // Assuming you have a Feedback table
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`, // Feedback table
       {
         method: "POST",
         headers: {
@@ -126,6 +140,8 @@ export const submitAirtableFeedback = async (
     );
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Airtable feedback submission error:", errorText);
       throw new Error(`Airtable API error: ${response.status}`);
     }
 
@@ -134,4 +150,26 @@ export const submitAirtableFeedback = async (
     console.error("Error submitting feedback to Airtable:", error);
     return false;
   }
+};
+
+// Helper function to get image fields from Airtable
+export const getImageFromAirtableField = (imageField: any): string => {
+  if (!imageField) return "https://via.placeholder.com/600x400?text=Image+Not+Available";
+  
+  // Handle array of attachments (common Airtable format)
+  if (Array.isArray(imageField) && imageField.length > 0) {
+    return imageField[0].url;
+  }
+  
+  // Handle string URL
+  if (typeof imageField === 'string') {
+    return imageField;
+  }
+  
+  // Handle object with url property
+  if (imageField?.url) {
+    return imageField.url;
+  }
+  
+  return "https://via.placeholder.com/600x400?text=Image+Not+Available";
 };
