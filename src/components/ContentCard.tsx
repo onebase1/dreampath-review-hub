@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { updateContentStatus, submitFeedback } from "@/services/mockData";
+import { submitAirtableFeedback } from "@/services/airtableService";
 
 interface ContentCardProps {
   item: ContentItem;
@@ -30,12 +29,7 @@ const ContentCard = ({ item, onStatusUpdate }: ContentCardProps) => {
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      await updateContentStatus(item.id, "approved");
-      onStatusUpdate(item.id, "approved");
-      toast({
-        title: "Content approved",
-        description: "Content has been approved successfully",
-      });
+      await onStatusUpdate(item.id, "approved");
     } catch (error) {
       toast({
         title: "Error",
@@ -63,9 +57,8 @@ const ContentCard = ({ item, onStatusUpdate }: ContentCardProps) => {
 
     setIsSubmitting(true);
     try {
-      await submitFeedback(item.id, feedbackType, comments);
-      await updateContentStatus(item.id, "rejected");
-      onStatusUpdate(item.id, "rejected");
+      await submitAirtableFeedback(item.id, feedbackType, comments);
+      await onStatusUpdate(item.id, "rejected");
       setIsDialogOpen(false);
       toast({
         title: "Feedback submitted",
