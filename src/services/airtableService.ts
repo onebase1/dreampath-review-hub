@@ -3,8 +3,9 @@ import { ContentItem } from "@/types/content";
 
 // Airtable API constants
 const AIRTABLE_API_KEY = "pate5bY8apa199fvx.a8672b97f4a5b27e34764abd801cf071f3b8b6462d8893be044fdc3e0e694ea3";
-const AIRTABLE_BASE_ID = "appZhJda3P1E7nURe"; // Updated with correct base ID format
+const AIRTABLE_BASE_ID = "appJPIE7nuRe"; // Social Media Poster base ID
 const AIRTABLE_API_URL = "https://api.airtable.com/v0";
+const AIRTABLE_TABLE_NAME = "Content"; // Update this if your table has a different name
 
 /**
  * Fetches content items from Airtable
@@ -13,9 +14,10 @@ export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
   try {
     // Using console.log to help with debugging
     console.log("Fetching from Airtable...");
+    console.log(`Using base ID: ${AIRTABLE_BASE_ID} and table: ${AIRTABLE_TABLE_NAME}`);
     
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Content`, // Content table name
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`, 
       {
         method: "GET",
         headers: {
@@ -40,17 +42,31 @@ export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
       return [];
     }
     
-    // Map Airtable records to ContentItem format
+    // Map Airtable records to ContentItem format - adapted for Social Media Poster base structure
     return data.records.map((record: any) => {
       const fields = record.fields || {};
+      
+      // Log the structure of the first record to help debugging
+      if (record === data.records[0]) {
+        console.log("First record structure:", fields);
+      }
+      
+      // Try to extract the image URL from various possible field names
+      const imageUrl = 
+        fields.ImageURL || 
+        fields.Image?.[0]?.url || 
+        fields.Attachments?.[0]?.url || 
+        fields["Image URL"] ||
+        "https://via.placeholder.com/600x400?text=Image+Not+Available";
+
       return {
         id: record.id,
-        type: mapContentType(fields.ContentType) || "image",
-        title: fields.Title || "Untitled Content",
-        caption: fields.Caption || "",
-        imageUrl: fields.ImageURL || fields.Image?.[0]?.url || "https://via.placeholder.com/600x400?text=Image+Not+Available",
-        dateCreated: fields.DateCreated || new Date().toISOString(),
-        status: "pending",
+        type: mapContentType(fields.Type || fields.ContentType || "image"),
+        title: fields.Title || fields.Name || "Untitled Content",
+        caption: fields.Caption || fields.Description || "",
+        imageUrl: imageUrl,
+        dateCreated: fields.DateCreated || fields["Created Time"] || new Date().toISOString(),
+        status: fields.Status?.toLowerCase() || "pending",
         urgency: fields.Urgency === "High" ? "high" : "normal"
       };
     });
@@ -64,14 +80,15 @@ export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
  * Maps Airtable content type values to our app's ContentType
  */
 const mapContentType = (airtableType: string): "image" | "carousel" | "video" | "text" => {
-  const typeMap: Record<string, "image" | "carousel" | "video" | "text"> = {
-    "Image": "image",
-    "Carousel": "carousel",
-    "Video": "video",
-    "Text": "text"
-  };
+  // Normalize the type to lowercase for easier matching
+  const normalizedType = airtableType.toLowerCase();
   
-  return typeMap[airtableType] || "image";
+  if (normalizedType.includes("image")) return "image";
+  if (normalizedType.includes("carousel")) return "carousel";
+  if (normalizedType.includes("video")) return "video";
+  if (normalizedType.includes("text")) return "text";
+  
+  return "image"; // Default fallback
 };
 
 /**
@@ -83,7 +100,7 @@ export const updateAirtableContentStatus = async (
 ): Promise<boolean> => {
   try {
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Content/${contentId}`,
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${contentId}`,
       {
         method: "PATCH",
         headers: {
@@ -121,7 +138,7 @@ export const submitAirtableFeedback = async (
 ): Promise<boolean> => {
   try {
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`, // Feedback table
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`, // Assumes a "Feedback" table exists
       {
         method: "POST",
         headers: {
