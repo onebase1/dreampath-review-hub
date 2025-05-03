@@ -4,14 +4,9 @@ import Header from "@/components/Header";
 import ContentFilters from "@/components/ContentFilters";
 import ContentCard from "@/components/ContentCard";
 import StatsSummary from "@/components/StatsSummary";
-import { fetchAirtableContent } from "@/services/airtableService";
-import { updateAirtableContentStatus } from "@/services/airtableService";
+import { fetchContentItems, fetchContentStats } from "@/services/mockData";
 import { ContentItem, ContentStats } from "@/types/content";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, RefreshCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
@@ -20,44 +15,24 @@ const Dashboard = () => {
   const [selectedType, setSelectedType] = useState("all");
   const [selectedSort, setSelectedSort] = useState("date-new");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  const loadData = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const items = await fetchAirtableContent();
-      setContentItems(items);
-      
-      // Calculate stats from the fetched items
-      const statsData: ContentStats = {
-        total: items.length,
-        pending: items.filter(item => item.status === 'pending').length,
-        approved: items.filter(item => item.status === 'approved').length,
-        rejected: items.filter(item => item.status === 'rejected').length
-      };
-      
-      setStats(statsData);
-      
-      toast({
-        title: "Data loaded successfully",
-        description: `Loaded ${items.length} content items from Airtable`,
-      });
-    } catch (error) {
-      console.error("Error loading data:", error);
-      setError("Failed to fetch content from Airtable. Please check your Airtable base ID and table name.");
-      toast({
-        title: "Error loading data",
-        description: "Failed to fetch content from Airtable",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [items, statsData] = await Promise.all([
+          fetchContentItems(),
+          fetchContentStats(),
+        ]);
+        setContentItems(items);
+        setStats(statsData);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     loadData();
   }, []);
 
@@ -92,46 +67,23 @@ const Dashboard = () => {
     setFilteredItems(filtered);
   }, [contentItems, selectedType, selectedSort]);
 
-  const handleStatusUpdate = async (id: string, status: 'approved' | 'rejected') => {
-    try {
-      // Update Airtable first
-      const success = await updateAirtableContentStatus(id, status);
+  const handleStatusUpdate = (id: string, status: 'approved' | 'rejected') => {
+    // Update local state
+    const updatedItems = contentItems.filter(item => item.id !== id);
+    setContentItems(updatedItems);
+
+    // Update stats
+    if (stats) {
+      const newStats = { ...stats };
+      newStats.pending = Math.max(0, newStats.pending - 1);
       
-      if (success) {
-        // Update local state after successful API call
-        const updatedItems = contentItems.map(item => 
-          item.id === id ? { ...item, status } : item
-        );
-        setContentItems(updatedItems);
-
-        // Update stats
-        if (stats) {
-          const newStats = { ...stats };
-          newStats.pending = Math.max(0, newStats.pending - 1);
-          
-          if (status === 'approved') {
-            newStats.approved += 1;
-          } else if (status === 'rejected') {
-            newStats.rejected += 1;
-          }
-          
-          setStats(newStats);
-        }
-
-        toast({
-          title: `Content ${status}`,
-          description: `The content has been ${status} successfully`,
-        });
-      } else {
-        throw new Error("Failed to update content status");
+      if (status === 'approved') {
+        newStats.approved += 1;
+      } else if (status === 'rejected') {
+        newStats.rejected += 1;
       }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${status} content`,
-        variant: "destructive",
-      });
+      
+      setStats(newStats);
     }
   };
 
@@ -156,32 +108,6 @@ const Dashboard = () => {
               ))}
             </div>
           </>
-        ) : error ? (
-          <div className="mt-8">
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-            <div className="text-center">
-              <p className="text-gray-600 mb-4">
-                There was an error connecting to your Airtable base. Please check:
-                <ul className="list-disc list-inside mt-2 text-left max-w-lg mx-auto">
-                  <li>Your Airtable API key is correct</li>
-                  <li>The base ID "appJPIE7nuRe" exists and you have access to it</li>
-                  <li>The table ID "tblzuATErls38jRfb" exists in your base</li>
-                  <li>Your Airtable tables have the expected fields (Title/Name, Caption/Description, etc.)</li>
-                </ul>
-              </p>
-              <Button 
-                onClick={loadData} 
-                className="mt-4"
-                variant="outline"
-              >
-                <RefreshCcw className="h-4 w-4 mr-2" /> Try Again
-              </Button>
-            </div>
-          </div>
         ) : (
           <>
             {stats && <StatsSummary stats={stats} />}
