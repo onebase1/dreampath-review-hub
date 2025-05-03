@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import ContentFilters from "@/components/ContentFilters";
@@ -8,6 +9,9 @@ import { updateAirtableContentStatus } from "@/services/airtableService";
 import { ContentItem, ContentStats } from "@/types/content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
@@ -16,43 +20,46 @@ const Dashboard = () => {
   const [selectedType, setSelectedType] = useState("all");
   const [selectedSort, setSelectedSort] = useState("date-new");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const items = await fetchAirtableContent();
-        setContentItems(items);
-        
-        // Calculate stats from the fetched items
-        const statsData: ContentStats = {
-          total: items.length,
-          pending: items.filter(item => item.status === 'pending').length,
-          approved: items.filter(item => item.status === 'approved').length,
-          rejected: items.filter(item => item.status === 'rejected').length
-        };
-        
-        setStats(statsData);
-        
-        toast({
-          title: "Data loaded successfully",
-          description: `Loaded ${items.length} content items from Airtable`,
-        });
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast({
-          title: "Error loading data",
-          description: "Failed to fetch content from Airtable",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const items = await fetchAirtableContent();
+      setContentItems(items);
+      
+      // Calculate stats from the fetched items
+      const statsData: ContentStats = {
+        total: items.length,
+        pending: items.filter(item => item.status === 'pending').length,
+        approved: items.filter(item => item.status === 'approved').length,
+        rejected: items.filter(item => item.status === 'rejected').length
+      };
+      
+      setStats(statsData);
+      
+      toast({
+        title: "Data loaded successfully",
+        description: `Loaded ${items.length} content items from Airtable`,
+      });
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setError("Failed to fetch content from Airtable. Please check your Airtable base ID and table name.");
+      toast({
+        title: "Error loading data",
+        description: "Failed to fetch content from Airtable",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     // Filter content items based on selected type
@@ -149,6 +156,32 @@ const Dashboard = () => {
               ))}
             </div>
           </>
+        ) : error ? (
+          <div className="mt-8">
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">
+                There was an error connecting to your Airtable base. Please check:
+                <ul className="list-disc list-inside mt-2 text-left max-w-lg mx-auto">
+                  <li>Your Airtable API key is correct</li>
+                  <li>The base ID "appJPIE7nuRe" exists and you have access to it</li>
+                  <li>The table ID "tblzuATErls38jRfb" exists in your base</li>
+                  <li>Your Airtable tables have the expected fields (Title/Name, Caption/Description, etc.)</li>
+                </ul>
+              </p>
+              <Button 
+                onClick={loadData} 
+                className="mt-4"
+                variant="outline"
+              >
+                <RefreshCcw className="h-4 w-4 mr-2" /> Try Again
+              </Button>
+            </div>
+          </div>
         ) : (
           <>
             {stats && <StatsSummary stats={stats} />}

@@ -5,7 +5,7 @@ import { ContentItem } from "@/types/content";
 const AIRTABLE_API_KEY = "pate5bY8apa199fvx.a8672b97f4a5b27e34764abd801cf071f3b8b6462d8893be044fdc3e0e694ea3";
 const AIRTABLE_BASE_ID = "appJPIE7nuRe"; // Social Media Poster base ID
 const AIRTABLE_API_URL = "https://api.airtable.com/v0";
-const AIRTABLE_TABLE_NAME = "Content"; // Update this if your table has a different name
+const AIRTABLE_TABLE_NAME = "tblzuATErls38jRfb"; // Try using the table ID instead of name
 
 /**
  * Fetches content items from Airtable
@@ -57,17 +57,19 @@ export const fetchAirtableContent = async (): Promise<ContentItem[]> => {
         fields.Image?.[0]?.url || 
         fields.Attachments?.[0]?.url || 
         fields["Image URL"] ||
+        fields.image?.[0]?.url ||
+        fields.attachments?.[0]?.url ||
         "https://via.placeholder.com/600x400?text=Image+Not+Available";
 
       return {
         id: record.id,
-        type: mapContentType(fields.Type || fields.ContentType || "image"),
-        title: fields.Title || fields.Name || "Untitled Content",
-        caption: fields.Caption || fields.Description || "",
+        type: mapContentType(fields.Type || fields.ContentType || fields.type || "image"),
+        title: fields.Title || fields.Name || fields.name || fields.title || "Untitled Content",
+        caption: fields.Caption || fields.Description || fields.description || fields.caption || "",
         imageUrl: imageUrl,
-        dateCreated: fields.DateCreated || fields["Created Time"] || new Date().toISOString(),
-        status: fields.Status?.toLowerCase() || "pending",
-        urgency: fields.Urgency === "High" ? "high" : "normal"
+        dateCreated: fields.DateCreated || fields["Created Time"] || fields.created_time || fields.createdTime || new Date().toISOString(),
+        status: fields.Status?.toLowerCase() || fields.status?.toLowerCase() || "pending",
+        urgency: (fields.Urgency === "High" || fields.urgency === "High") ? "high" : "normal"
       };
     });
   } catch (error) {
@@ -137,20 +139,48 @@ export const submitAirtableFeedback = async (
   comments: string
 ): Promise<boolean> => {
   try {
+    // Try to submit to a "Feedback" table, if it exists
+    try {
+      const response = await fetch(
+        `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fields: {
+              ContentID: contentId,
+              FeedbackType: feedbackType,
+              Comments: comments,
+              Timestamp: new Date().toISOString()
+            }
+          })
+        }
+      );
+
+      if (response.ok) {
+        return true;
+      }
+    } catch (error) {
+      console.log("Feedback table not found, will try to update the content record instead");
+    }
+    
+    // Fallback: If no Feedback table, update the main record with feedback
     const response = await fetch(
-      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/Feedback`, // Assumes a "Feedback" table exists
+      `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${contentId}`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           fields: {
-            ContentID: contentId,
             FeedbackType: feedbackType,
-            Comments: comments,
-            Timestamp: new Date().toISOString()
+            Feedback: comments,
+            FeedbackTimestamp: new Date().toISOString()
           }
         })
       }
