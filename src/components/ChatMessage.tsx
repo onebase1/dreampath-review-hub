@@ -8,6 +8,7 @@ interface MessageProps {
     content: string;
     type: "text" | "image" | "video";
     isUser: boolean;
+    timestamp?: string;
   };
 }
 
@@ -98,6 +99,11 @@ const ChatMessage = ({ message }: MessageProps) => {
         }`}
       >
         {renderContent()}
+        {message.timestamp && (
+          <div className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-400'}`}>
+            {new Date(message.timestamp).toLocaleTimeString()}
+          </div>
+        )}
       </div>
     </div>
   );

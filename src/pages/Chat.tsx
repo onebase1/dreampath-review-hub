@@ -3,9 +3,18 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { Send, History, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatMessage from "@/components/ChatMessage";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type MessageType = "text" | "image" | "video";
 
@@ -14,22 +23,46 @@ interface Message {
   content: string;
   type: MessageType;
   isUser: boolean;
+  timestamp: string;
 }
 
 // Default webhook URL - can be changed by the user if needed
 const DEFAULT_WEBHOOK_URL = "https://n8n-fpyfr-u38498.vm.elestio.app/webhook-test/8cca690c-79d6-4576-b212-8bf0572ac384";
+
+// Key for local storage
+const CHAT_HISTORY_KEY = "dreampath-chat-history";
 
 const Chat = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Load messages from local storage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (savedMessages) {
+      try {
+        setMessages(JSON.parse(savedMessages));
+      } catch (err) {
+        console.error("Failed to load chat history:", err);
+        // If we can't parse the history, we'll reset it
+        localStorage.removeItem(CHAT_HISTORY_KEY);
+      }
+    }
+  }, []);
 
   // Auto scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Save messages to local storage when they change
+  useEffect(() => {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,6 +85,7 @@ const Chat = () => {
       content: input,
       type: "text",
       isUser: true,
+      timestamp: new Date().toISOString()
     };
     
     setMessages((prev) => [...prev, userMessage]);
@@ -106,6 +140,7 @@ const Chat = () => {
         content: content,
         type: responseType,
         isUser: false,
+        timestamp: new Date().toISOString()
       };
       
       setMessages((prev) => [...prev, aiMessage]);
@@ -122,11 +157,72 @@ const Chat = () => {
     }
   };
 
+  const clearHistory = () => {
+    setMessages([]);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    setHistoryOpen(false);
+    toast({
+      title: "History cleared",
+      description: "Your chat history has been cleared successfully.",
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center">
           <h1 className="text-2xl font-bold text-dreampath-dark-purple">AI Marketing Assistant</h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <History size={18} className="mr-2" />
+                History
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[525px]">
+              <DialogHeader>
+                <DialogTitle>Chat History</DialogTitle>
+              </DialogHeader>
+              <div className="mt-2">
+                <ScrollArea className="h-[50vh]">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No chat history yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map(message => (
+                        <div key={message.id} className="border-b pb-2 last:border-0">
+                          <div className="flex items-start justify-between">
+                            <p className="font-medium">{message.isUser ? "You" : "AI Assistant"}</p>
+                            <span className="text-xs text-gray-500">{formatDate(message.timestamp)}</span>
+                          </div>
+                          <p className="text-sm mt-1 truncate">{message.content.substring(0, 100)}{message.content.length > 100 ? "..." : ""}</p>
+                          {message.type !== "text" && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                              {message.type}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+              <DialogFooter>
+                <Button onClick={clearHistory} variant="destructive" size="sm" disabled={messages.length === 0}>
+                  <Trash size={16} className="mr-2" />
+                  Clear History
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
