@@ -16,11 +16,14 @@ interface Message {
   isUser: boolean;
 }
 
+// Default webhook URL - can be changed by the user if needed
+const DEFAULT_WEBHOOK_URL = "https://n8n-fpyfr-u38498.vm.elestio.app/webhook-test/8cca690c-79d6-4576-b212-8bf0572ac384";
+
 const Chat = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -77,9 +80,12 @@ const Chat = () => {
       let responseType: MessageType = "text";
       let content = "";
       
-      // Determine content type based on response structure
+      // Extract the actual message content
       if (typeof data === "string") {
         content = data;
+      } else if (data.output) {
+        // Handle the case where the response includes an "output" field (common in n8n)
+        content = data.output;
       } else if (data.text) {
         content = data.text;
       } else if (data.message) {
@@ -125,7 +131,8 @@ const Chat = () => {
       </header>
 
       <div className="container mx-auto p-4 flex-1 flex flex-col max-w-4xl">
-        <div className="mb-4">
+        {/* Hidden webhook URL input - can be revealed if needed */}
+        <div className="hidden">
           <label htmlFor="webhook-url" className="block text-sm font-medium text-gray-700 mb-1">
             n8n Webhook URL
           </label>
