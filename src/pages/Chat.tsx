@@ -29,8 +29,9 @@ interface Message {
 // Default webhook URL - can be changed by the user if needed
 const DEFAULT_WEBHOOK_URL = "https://n8n-fpyfr-u38498.vm.elestio.app/webhook-test/8cca690c-79d6-4576-b212-8bf0572ac384";
 
-// Key for local storage
+// Keys for local storage
 const CHAT_HISTORY_KEY = "dreampath-chat-history";
+const USER_ID_KEY = "dreampath-user-id";
 
 const Chat = () => {
   const [input, setInput] = useState("");
@@ -38,8 +39,28 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [userId, setUserId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Generate or retrieve a consistent userId
+  const generateUserId = () => {
+    let storedUserId = localStorage.getItem(USER_ID_KEY);
+    
+    if (!storedUserId) {
+      storedUserId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem(USER_ID_KEY, storedUserId);
+    }
+    
+    return storedUserId;
+  };
+
+  // Initialize userId on component mount
+  useEffect(() => {
+    const generatedUserId = generateUserId();
+    setUserId(generatedUserId);
+    console.log("User ID:", generatedUserId);
+  }, []);
 
   // Load messages from local storage on mount
   useEffect(() => {
@@ -101,6 +122,7 @@ const Chat = () => {
         body: JSON.stringify({ 
           message: input,
           timestamp: new Date().toISOString(),
+          userId: userId, // Include userId with each request
         }),
       });
 
@@ -110,16 +132,14 @@ const Chat = () => {
 
       const data = await response.json();
       
-      // Process response based on content type
-      let responseType: MessageType = "text";
+      // Extract the actual content from the response
       let content = "";
+      let responseType: MessageType = "text";
       
-      // Extract the actual message content
-      if (typeof data === "string") {
-        content = data;
-      } else if (data.output) {
-        // Handle the case where the response includes an "output" field (common in n8n)
+      if (data.output) {
         content = data.output;
+      } else if (typeof data === "string") {
+        content = data;
       } else if (data.text) {
         content = data.text;
       } else if (data.message) {
@@ -240,6 +260,11 @@ const Chat = () => {
             placeholder="Enter your n8n webhook URL"
             className="w-full"
           />
+        </div>
+
+        {/* User ID display - also hidden by default */}
+        <div className="hidden">
+          <p className="text-sm text-gray-500">User ID: {userId}</p>
         </div>
 
         {/* Message history */}
