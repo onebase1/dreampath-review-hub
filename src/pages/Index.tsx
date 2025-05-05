@@ -51,7 +51,7 @@ const Index = () => {
                 <AspectRatio ratio={16 / 9}>
                   {!imageError ? (
                     <img 
-                      src="/lovable-uploads/a873dff1-ec7c-499e-8c7b-aa8be3985b35.png" 
+                      src="https://i.ibb.co/j98Hpzwk/file.png" 
                       alt="DreaMPATH – OET Mock Practice Online LMS" 
                       className="w-full h-full object-cover"
                       onError={(e) => {
