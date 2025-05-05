@@ -1,6 +1,8 @@
 
 import { useState } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Button } from "@/components/ui/button";
+import { Edit2 } from "lucide-react";
 
 interface MessageProps {
   message: {
@@ -10,9 +12,10 @@ interface MessageProps {
     isUser: boolean;
     timestamp?: string;
   };
+  onSelectImage?: (url: string) => void;
 }
 
-const ChatMessage = ({ message }: MessageProps) => {
+const ChatMessage = ({ message, onSelectImage }: MessageProps) => {
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
@@ -102,6 +105,19 @@ const ChatMessage = ({ message }: MessageProps) => {
               onError={() => setImageError(true)} 
             />
           </AspectRatio>
+          {onSelectImage && (
+            <div className="mt-2 flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => onSelectImage(imageUrl)}
+                className="text-xs flex items-center gap-1"
+              >
+                <Edit2 size={14} />
+                Edit this image
+              </Button>
+            </div>
+          )}
         </div>
       );
     } else if (message.type === "video") {
@@ -163,7 +179,7 @@ const ChatMessage = ({ message }: MessageProps) => {
                 }} 
               />
             </AspectRatio>
-            <div className="mt-2">
+            <div className="mt-2 flex justify-between items-center">
               <a 
                 href={url} 
                 target="_blank" 
@@ -172,6 +188,17 @@ const ChatMessage = ({ message }: MessageProps) => {
               >
                 Open in new tab
               </a>
+              {onSelectImage && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onSelectImage(url)}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <Edit2 size={14} />
+                  Edit this image
+                </Button>
+              )}
             </div>
           </div>
         );

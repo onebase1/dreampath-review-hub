@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, History, Trash } from "lucide-react";
+import { Send, History, Trash, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatMessage from "@/components/ChatMessage";
 import { 
@@ -40,6 +40,7 @@ const Chat = () => {
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [userId, setUserId] = useState<string>("");
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -86,6 +87,17 @@ const Chat = () => {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
   }, [messages]);
 
+  // Set the selected image URL from a chat message
+  const handleImageSelection = (url: string) => {
+    setSelectedImageUrl(url);
+    // Update input with a prefilled message for editing
+    setInput(`Edit this image: add `);
+    toast({
+      title: "Image selected",
+      description: "Now describe how you want to edit this image",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -114,16 +126,25 @@ const Chat = () => {
     setLoading(true);
 
     try {
+      // Prepare the request payload
+      const payload: Record<string, any> = { 
+        message: input,
+        timestamp: new Date().toISOString(),
+        userId: userId, // Include userId with each request
+      };
+
+      // If we have a selected image URL, include it in the payload
+      if (selectedImageUrl) {
+        payload.photoId = selectedImageUrl;
+        console.log("Sending image edit request with photoId:", selectedImageUrl);
+      }
+
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          message: input,
-          timestamp: new Date().toISOString(),
-          userId: userId, // Include userId with each request
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -165,6 +186,9 @@ const Chat = () => {
       
       setMessages((prev) => [...prev, aiMessage]);
 
+      // Reset the selected image URL after sending the request
+      setSelectedImageUrl("");
+
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -198,6 +222,12 @@ const Chat = () => {
           <h1 className="text-2xl font-bold text-dreampath-dark-purple">AI Marketing Assistant</h1>
         </div>
         <div className="flex items-center space-x-2">
+          {selectedImageUrl && (
+            <div className="flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-sm">
+              <ImageIcon size={16} className="mr-2" />
+              Image selected for editing
+            </div>
+          )}
           <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -278,7 +308,11 @@ const Chat = () => {
             </div>
           ) : (
             messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
+              <ChatMessage 
+                key={message.id} 
+                message={message} 
+                onSelectImage={message.type === "image" && !message.isUser ? handleImageSelection : undefined}
+              />
             ))
           )}
           <div ref={messagesEndRef} />
@@ -289,7 +323,7 @@ const Chat = () => {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask your marketing assistant..."
+            placeholder={selectedImageUrl ? "Describe how to edit the image..." : "Ask your marketing assistant..."}
             className="flex-1 resize-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
