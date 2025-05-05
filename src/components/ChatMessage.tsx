@@ -56,11 +56,11 @@ const ChatMessage = ({ message, onSelectImage }: MessageProps) => {
     }
 
     // Handle markdown link format [text](url)
-    const markdownLinkRegex = /\[.*?\]\((https?:\/\/[^\s)]+)\)/;
+    const markdownLinkRegex = /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/;
     const markdownMatch = url.match(markdownLinkRegex);
-    if (markdownMatch && markdownMatch[1]) {
+    if (markdownMatch && markdownMatch[2]) {
       // Extract the URL from the markdown link
-      const extractedUrl = markdownMatch[1];
+      const extractedUrl = markdownMatch[2];
       // Check if it's a Google Drive link and process accordingly
       if (extractedUrl.includes('drive.google.com/file/d/')) {
         const fileIdMatch = extractedUrl.match(/\/d\/(.*?)\/view/);
@@ -75,6 +75,19 @@ const ChatMessage = ({ message, onSelectImage }: MessageProps) => {
     }
 
     return url;
+  };
+
+  // Extract image URL from markdown format if present
+  const extractImageFromMarkdown = (content: string) => {
+    const markdownLinkRegex = /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/;
+    const match = content.match(markdownLinkRegex);
+    if (match) {
+      return {
+        altText: match[1],
+        imageUrl: match[2]
+      };
+    }
+    return null;
   };
 
   const renderContent = () => {
@@ -152,8 +165,52 @@ const ChatMessage = ({ message, onSelectImage }: MessageProps) => {
         </div>
       );
     } else {
-      // Check if text content contains a link that might be an image or video
+      // Check if text content contains a markdown image link
       const content = message.content;
+      const markdownImage = extractImageFromMarkdown(content);
+      
+      if (markdownImage) {
+        return (
+          <div>
+            <p className="whitespace-pre-wrap mb-4">
+              {message.content.replace(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/, `${markdownImage.altText}`)}
+            </p>
+            <div className="max-w-xs sm:max-w-md">
+              <AspectRatio ratio={16 / 9} className="mt-2 border border-gray-200 rounded-lg overflow-hidden">
+                <img 
+                  src={markdownImage.imageUrl} 
+                  alt={markdownImage.altText} 
+                  className="rounded-lg object-cover w-full h-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    setImageError(true);
+                  }} 
+                />
+              </AspectRatio>
+              {imageError && (
+                <div className="mt-2 text-red-500 text-sm">
+                  Failed to load image. <a href={markdownImage.imageUrl} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Open in new tab</a>
+                </div>
+              )}
+              {onSelectImage && !imageError && (
+                <div className="mt-2 flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onSelectImage(markdownImage.imageUrl)}
+                    className="text-xs flex items-center gap-1"
+                  >
+                    <Edit2 size={14} />
+                    Edit this image
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+      
+      // Check if text content contains a link that might be an image or video
       const urlRegex = /(https?:\/\/[^\s]+)/g;
       const matches = content.match(urlRegex);
       
@@ -230,3 +287,4 @@ const ChatMessage = ({ message, onSelectImage }: MessageProps) => {
 };
 
 export default ChatMessage;
+
