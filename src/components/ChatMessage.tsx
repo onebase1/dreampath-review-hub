@@ -46,6 +46,30 @@ const ChatMessage = ({ message }: MessageProps) => {
         return `https://drive.google.com/uc?id=${fileId}&export=download`;
       }
     }
+    
+    // Handle already formatted Google Drive links with id parameter
+    if (url.includes('drive.google.com/uc?id=')) {
+      return url;
+    }
+
+    // Handle markdown link format [text](url)
+    const markdownLinkRegex = /\[.*?\]\((https?:\/\/[^\s)]+)\)/;
+    const markdownMatch = url.match(markdownLinkRegex);
+    if (markdownMatch && markdownMatch[1]) {
+      // Extract the URL from the markdown link
+      const extractedUrl = markdownMatch[1];
+      // Check if it's a Google Drive link and process accordingly
+      if (extractedUrl.includes('drive.google.com/file/d/')) {
+        const fileIdMatch = extractedUrl.match(/\/d\/(.*?)\/view/);
+        if (fileIdMatch && fileIdMatch[1]) {
+          const fileId = fileIdMatch[1];
+          return `https://drive.google.com/uc?id=${fileId}&export=download`;
+        }
+      } else if (extractedUrl.includes('drive.google.com/uc?id=')) {
+        return extractedUrl;
+      }
+      return extractedUrl;
+    }
 
     return url;
   };
@@ -57,6 +81,16 @@ const ChatMessage = ({ message }: MessageProps) => {
       return imageError ? (
         <div className="bg-gray-100 rounded p-4 text-red-500 text-sm">
           Failed to load image. URL: {message.content}
+          <div className="mt-2">
+            <a 
+              href={imageUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-blue-500 hover:underline"
+            >
+              Open image in new tab
+            </a>
+          </div>
         </div>
       ) : (
         <div className="max-w-xs sm:max-w-md">
@@ -76,6 +110,16 @@ const ChatMessage = ({ message }: MessageProps) => {
       return videoError ? (
         <div className="bg-gray-100 rounded p-4 text-red-500 text-sm">
           Failed to load video. URL: {message.content}
+          <div className="mt-2">
+            <a 
+              href={videoUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-blue-500 hover:underline"
+            >
+              Open video in new tab
+            </a>
+          </div>
         </div>
       ) : (
         <div className="max-w-xs sm:max-w-md">
@@ -92,8 +136,49 @@ const ChatMessage = ({ message }: MessageProps) => {
         </div>
       );
     } else {
-      // Text content
-      return <p className="whitespace-pre-wrap">{message.content}</p>;
+      // Check if text content contains a link that might be an image or video
+      const content = message.content;
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const matches = content.match(urlRegex);
+      
+      if (matches && (
+        matches.some(match => match.includes('drive.google.com')) || 
+        content.includes('[Click here to view') || 
+        content.includes('[View the image')
+      )) {
+        const url = getFormattedUrl(content);
+        
+        // Try to display as image
+        return (
+          <div>
+            <p className="whitespace-pre-wrap mb-4">{content}</p>
+            <AspectRatio ratio={16 / 9} className="mt-2 border border-gray-200 rounded-lg overflow-hidden">
+              <img 
+                src={url} 
+                alt="Generated content" 
+                className="rounded-lg object-cover w-full h-full"
+                onError={(e) => {
+                  // If image fails, hide the broken image
+                  e.currentTarget.style.display = 'none';
+                }} 
+              />
+            </AspectRatio>
+            <div className="mt-2">
+              <a 
+                href={url} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-blue-500 hover:underline text-sm"
+              >
+                Open in new tab
+              </a>
+            </div>
+          </div>
+        );
+      }
+      
+      // Regular text content
+      return <p className="whitespace-pre-wrap">{content}</p>;
     }
   };
 
