@@ -77,8 +77,8 @@ const Crawler = () => {
     setIsChatbotReady(false);
     
     try {
-      // Make the actual API call to your n8n webhook
-      const response = await fetch('http://localhost:5678/webhook/index', {
+      // Updated API endpoint to match n8n webhook configuration
+      const response = await fetch('http://localhost:5678/webhook-test/index', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,8 +112,8 @@ const Crawler = () => {
     
     const interval = setInterval(async () => {
       try {
-        // Fetch status from your API endpoint
-        const response = await fetch(`http://localhost:5678/webhook/status?jobId=${jobId}`);
+        // Updated API endpoint to match n8n webhook configuration
+        const response = await fetch(`http://localhost:5678/webhook-test/status?jobId=${jobId}`);
         
         if (!response.ok) {
           throw new Error(`Error fetching status: ${response.status}`);
@@ -183,7 +183,8 @@ const Crawler = () => {
   // Fetch the final chatbot data
   const fetchChatbotData = async () => {
     try {
-      const response = await fetch(`http://localhost:5678/webhook/chatbot?url=${encodeURIComponent(url)}`);
+      // Updated API endpoint to match n8n webhook configuration
+      const response = await fetch(`http://localhost:5678/webhook-test/chatbot?url=${encodeURIComponent(url)}`);
       
       if (!response.ok) {
         throw new Error(`Error fetching chatbot data: ${response.status}`);
