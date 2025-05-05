@@ -28,17 +28,25 @@ const ChatMessage = ({ message }: MessageProps) => {
   
   // Format the URL if needed
   const getFormattedUrl = (url: string): string => {
-    if (isValidUrl(url)) {
-      return url;
+    if (!isValidUrl(url)) {
+      // Try to extract URL from string if it contains a URL
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const match = url.match(urlRegex);
+      if (match) {
+        url = match[0];
+      }
     }
     
-    // Try to extract URL from string if it contains a URL
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const match = url.match(urlRegex);
-    if (match) {
-      return match[0];
+    // Handle Google Drive links
+    if (url.includes('drive.google.com/file/d/')) {
+      // Extract file ID from the Google Drive link
+      const fileIdMatch = url.match(/\/d\/(.*?)\/view/);
+      if (fileIdMatch && fileIdMatch[1]) {
+        const fileId = fileIdMatch[1];
+        return `https://drive.google.com/uc?id=${fileId}&export=download`;
+      }
     }
-    
+
     return url;
   };
 
