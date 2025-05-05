@@ -3,8 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useState } from "react";
 
 const Index = () => {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <div>
       <div className="bg-gray-900 text-white py-8">
@@ -46,15 +49,24 @@ const Index = () => {
             <div className="w-full lg:w-1/2 order-1 lg:order-2">
               <div className="rounded-lg overflow-hidden shadow-lg">
                 <AspectRatio ratio={16 / 9}>
-                  <img 
-                    src="https://drive.google.com/uc?id=1epXnnETqqBAHiN1LJt7MuDA88LNBmqLH&export=download" 
-                    alt="DreaMPATH – OET Mock Practice Online LMS" 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      console.error("Image failed to load");
-                      e.currentTarget.src = "https://placehold.co/600x400?text=DreaMPATH";
-                    }}
-                  />
+                  {!imageError ? (
+                    <img 
+                      src="/lovable-uploads/a873dff1-ec7c-499e-8c7b-aa8be3985b35.png" 
+                      alt="DreaMPATH – OET Mock Practice Online LMS" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error("Image failed to load");
+                        setImageError(true);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
+                      <div className="text-center p-4">
+                        <p className="text-xl font-bold mb-2">DreaMPATH</p>
+                        <p className="text-sm">Image could not be loaded</p>
+                      </div>
+                    </div>
+                  )}
                 </AspectRatio>
               </div>
             </div>
