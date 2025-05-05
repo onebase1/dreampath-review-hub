@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +30,6 @@ const Crawler = () => {
     { name: "Generating Chatbot", time: 13 }
   ];
 
-  const sampleQuestions = [
-    "What services do you offer?",
-    "How can I contact customer support?",
-    "What are your pricing plans?",
-    "Do you have any case studies?",
-    "What technologies do you use?"
-  ];
-
   const validateUrl = (url: string) => {
     try {
       new URL(url);
@@ -48,7 +39,7 @@ const Crawler = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!url) {
@@ -69,101 +60,142 @@ const Crawler = () => {
       return;
     }
 
-    // Start the processing simulation
+    // Start the processing
     setIsProcessing(true);
     setCurrentStep(0);
     setProgress(0);
     setIsChatbotReady(false);
     
-    // Simulate the crawling process
-    simulateProcessing();
+    try {
+      // Make the actual API call to your n8n webhook
+      const response = await fetch('http://localhost:5678/webhook/index', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      // Start polling for status
+      pollForStatus();
+      
+    } catch (error) {
+      console.error('Error submitting URL:', error);
+      toast({
+        title: "Error Processing Website",
+        description: `There was an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
+      setIsProcessing(false);
+    }
   };
 
-  const simulateProcessing = () => {
-    let step = 0;
-    let totalTime = steps.reduce((sum, step) => sum + step.time, 0);
-    let elapsed = 0;
+  // Poll for status updates from the n8n webhook
+  const pollForStatus = async () => {
+    // Create a unique ID for this job
+    const jobId = Date.now().toString();
+    let statusCheckCount = 0;
     
-    // Reset stats
-    setChatbotStats({
-      pagesCrawled: 0,
-      contentExtracted: 0,
-      vectorsCreated: 0,
-      sampleQuestions: []
-    });
-
-    const interval = setInterval(() => {
-      elapsed++;
-      const overallProgress = Math.min(Math.floor((elapsed / totalTime) * 100), 100);
-      setProgress(overallProgress);
-      
-      // Calculate estimated time remaining
-      setEstimatedTime(Math.max(totalTime - elapsed, 0));
-      
-      // Update current step when needed
-      const timePassed = steps.slice(0, step).reduce((sum, s) => sum + s.time, 0);
-      const currentStepTime = steps[step].time;
-      
-      if (elapsed > timePassed + currentStepTime && step < steps.length - 1) {
-        step++;
-        setCurrentStep(step);
+    const interval = setInterval(async () => {
+      try {
+        // Fetch status from your API endpoint
+        const response = await fetch(`http://localhost:5678/webhook/status?jobId=${jobId}`);
         
-        // Update stats based on current step
-        updateStatsForStep(step);
+        if (!response.ok) {
+          throw new Error(`Error fetching status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update progress based on real data
+        setProgress(data.progress || 0);
+        setCurrentStep(data.currentStep || 0);
+        setEstimatedTime(data.estimatedTime || 0);
+        
+        // Update stats if available
+        if (data.stats) {
+          setChatbotStats({
+            pagesCrawled: data.stats.pagesCrawled || 0,
+            contentExtracted: data.stats.contentExtracted || 0,
+            vectorsCreated: data.stats.vectorsCreated || 0,
+            sampleQuestions: data.stats.sampleQuestions || []
+          });
+        }
+        
+        // Check if processing is complete
+        if (data.status === 'complete') {
+          clearInterval(interval);
+          setIsProcessing(false);
+          setIsChatbotReady(true);
+          
+          // Fetch the final chatbot data
+          fetchChatbotData();
+          
+          toast({
+            title: "Chatbot Created Successfully",
+            description: "Your website has been processed and chatbot is ready for use",
+          });
+        } else if (data.status === 'error') {
+          clearInterval(interval);
+          setIsProcessing(false);
+          
+          toast({
+            title: "Error Processing Website",
+            description: data.errorMessage || "There was an error processing your website",
+            variant: "destructive"
+          });
+        }
+        
+        // Add a timeout after too many checks
+        statusCheckCount++;
+        if (statusCheckCount > 100) {  // About 5 minutes of checking
+          clearInterval(interval);
+          setIsProcessing(false);
+          
+          toast({
+            title: "Processing Timeout",
+            description: "The operation took too long to complete. Please try again later.",
+            variant: "destructive"
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error checking status:', error);
+        // Don't stop the interval on network errors - just try again
       }
-      
-      // Finish processing
-      if (elapsed >= totalTime) {
-        clearInterval(interval);
-        setIsProcessing(false);
-        setIsChatbotReady(true);
-        
-        // Final stats update
-        setChatbotStats({
-          pagesCrawled: 28,
-          contentExtracted: 145,  // in KB
-          vectorsCreated: 1850,
-          sampleQuestions: sampleQuestions
-        });
-        
-        toast({
-          title: "Chatbot Created Successfully",
-          description: "Your website has been processed and chatbot is ready for use",
-        });
-      }
-    }, 150); // Speed up the simulation for demo
+    }, 3000);  // Check every 3 seconds
   };
 
-  const updateStatsForStep = (step: number) => {
-    // Simulate updating stats based on steps
-    switch (step) {
-      case 1: // Crawling
-        setChatbotStats(prev => ({
-          ...prev,
-          pagesCrawled: 12
-        }));
-        break;
-      case 2: // Processing
-        setChatbotStats(prev => ({
-          ...prev,
-          pagesCrawled: 28,
-          contentExtracted: 78
-        }));
-        break;
-      case 3: // Embeddings
-        setChatbotStats(prev => ({
-          ...prev,
-          contentExtracted: 145,
-          vectorsCreated: 920
-        }));
-        break;
-      case 4: // Chatbot
-        setChatbotStats(prev => ({
-          ...prev,
-          vectorsCreated: 1850,
-          sampleQuestions: sampleQuestions.slice(0, 3)
-        }));
-        break;
+  // Fetch the final chatbot data
+  const fetchChatbotData = async () => {
+    try {
+      const response = await fetch(`http://localhost:5678/webhook/chatbot?url=${encodeURIComponent(url)}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching chatbot data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Update chatbot data with real information
+      setChatbotStats({
+        pagesCrawled: data.pagesCrawled || chatbotStats.pagesCrawled,
+        contentExtracted: data.contentExtracted || chatbotStats.contentExtracted,
+        vectorsCreated: data.vectorsCreated || chatbotStats.vectorsCreated,
+        sampleQuestions: data.sampleQuestions || chatbotStats.sampleQuestions
+      });
+      
+    } catch (error) {
+      console.error('Error fetching chatbot data:', error);
+      toast({
+        title: "Warning",
+        description: "Chatbot created but couldn't fetch all details. Some information may be incomplete.",
+        variant: "default"
+      });
     }
   };
 
