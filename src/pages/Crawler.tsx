@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,18 @@ const Crawler = () => {
     { name: "Generating Chatbot", time: 13 }
   ];
 
-  const validateUrl = (url: string) => {
+  // Fixed validateUrl function to properly handle URLs
+  const validateUrl = (input: string) => {
+    // If URL already has protocol, use it as is
+    let urlToCheck = input.trim();
+    
+    // Simple check to ensure it has a valid protocol
+    if (!/^https?:\/\//i.test(urlToCheck)) {
+      return false;
+    }
+    
     try {
-      new URL(url);
+      new URL(urlToCheck);
       return true;
     } catch (e) {
       return false;
