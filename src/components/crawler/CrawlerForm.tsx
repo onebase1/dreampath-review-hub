@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader } from "lucide-react";
 import { validateUrl } from "@/utils/urlValidator";
-import { simulateProcessingSteps } from "@/utils/crawlSimulator";
 import { CrawlStepsProgress } from "./CrawlStepsProgress";
 
 interface CrawlerFormProps {
@@ -14,21 +13,16 @@ interface CrawlerFormProps {
 
 // Interface for the crawler response
 export interface CrawlResponse {
-  success: boolean | string; // Can be "true" as a string
-  stats: {
+  success: boolean;
+  message?: string;
+  stats: number[] | { 
     pagesCrawled: number | string;
     contentExtracted: string | number;
     vectorsCreated: number | string;
-  } | string; // Stats can be returned as a JSON string
-  url: string | null; // URL can be null
-  originalUrl?: string; // Added to preserve the original URL entered by the user
-  sampleQuestions: string[] | string; // Sample questions can be returned as a JSON string
-
-  // For direct Knowledge Tool responses
-  response?: Array<{
-    pageContent?: string;
-    metadata?: any;
-  }>;
+  } | string;
+  questions?: string[];
+  url?: string;
+  originalUrl?: string;
 }
 
 export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
@@ -36,7 +30,6 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [estimatedTime, setEstimatedTime] = useState(0);
   const { toast } = useToast();
 
   const steps = [
@@ -80,103 +73,84 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
     setProgress(0);
 
     console.log("Submitting URL:", processedUrl);
+    
+    // Progress simulation helper
+    const progressInterval = simulateProgressWhileWaiting();
 
     try {
-      // Update API endpoint to match n8n webhook configuration
+      // Make actual API call to n8n webhook
       const response = await fetch('http://localhost:5678/webhook-test/index', {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           url: processedUrl,
-          // Add the original URL as a separate field to ensure it's preserved
-          originalUrl: processedUrl
-        }),
+          originalUrl: processedUrl 
+        })
+      });
+      
+      // Clear the progress simulation
+      clearInterval(progressInterval);
+      
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Response data:", data);
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Processing failed');
+      }
+      
+      // Successfully processed
+      setProgress(100);
+      
+      // Call onSuccess with the response data
+      onSuccess({
+        ...data,
+        url: data.url || processedUrl,
+        originalUrl: processedUrl
       });
 
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-
-      // Process the response directly instead of polling
-      const data: CrawlResponse = await response.json();
-      console.log("Response data:", data);
-
-      // Check if we have a response object from the Knowledge Tool
-      if (data.response && Array.isArray(data.response)) {
-        console.log("Knowledge Tool response detected");
-
-        // Create a synthetic success response
-        const syntheticData: CrawlResponse = {
-          success: true,
-          stats: {
-            pagesCrawled: data.response.length,
-            contentExtracted: `${Math.round(data.response.reduce((acc, item) => acc + (item.pageContent?.length || 0), 0) / 1024)} KB`,
-            vectorsCreated: data.response.length
-          },
-          url: processedUrl,
-          originalUrl: processedUrl,
-          sampleQuestions: [
-            "What services do you offer?",
-            "How can I contact you?",
-            "What are your business hours?",
-            "Where are you located?",
-            "Do you have any special offers?"
-          ]
-        };
-
-        // Simulate processing steps for better UX
-        simulateProcessingSteps(
-          steps,
-          setCurrentStep,
-          setProgress,
-          setEstimatedTime,
-          () => {
-            setIsProcessing(false);
-            onSuccess(syntheticData);
-
-            toast({
-              title: "Chatbot Created Successfully",
-              description: "Your website has been processed and chatbot is ready for use",
-            });
-          }
-        );
-      } else if (data.success) {
-        // Regular success response format
-        // Simulate processing steps for better UX
-        simulateProcessingSteps(
-          steps,
-          setCurrentStep,
-          setProgress,
-          setEstimatedTime,
-          () => {
-            setIsProcessing(false);
-            onSuccess({
-              ...data,
-              url: data.url || processedUrl,
-              originalUrl: processedUrl // Pass the processed URL
-            });
-
-            toast({
-              title: "Chatbot Created Successfully",
-              description: "Your website has been processed and chatbot is ready for use",
-            });
-          }
-        );
-      } else {
-        throw new Error("Processing failed");
-      }
+      toast({
+        title: "Success!",
+        description: data.message || "Website successfully processed",
+      });
 
     } catch (error) {
+      // Clear progress simulation
+      clearInterval(progressInterval);
+      
       console.error('Error submitting URL:', error);
       toast({
-        title: "Error Processing Website",
-        description: `There was an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: "Processing failed",
+        description: error instanceof Error ? error.message : 'Something went wrong',
         variant: "destructive"
       });
+    } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Progress simulation helper
+  const simulateProgressWhileWaiting = () => {
+    let progress = 0;
+    return setInterval(() => {
+      progress += 1;
+      if (progress <= 95) {
+        setProgress(progress);
+        
+        // Update current step based on progress
+        if (progress < 20) setCurrentStep(0);
+        else if (progress < 40) setCurrentStep(1);
+        else if (progress < 60) setCurrentStep(2);
+        else if (progress < 80) setCurrentStep(3);
+        else setCurrentStep(4);
+      }
+    }, 500);
   };
 
   return (
@@ -210,7 +184,7 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
         isProcessing={isProcessing}
         currentStep={currentStep}
         progress={progress}
-        estimatedTime={estimatedTime}
+        estimatedTime={0}
         steps={steps}
       />
     </div>

@@ -22,57 +22,68 @@ const Crawler = () => {
   const handleCrawlSuccess = (data: CrawlResponse) => {
     // Preserve the original URL from the data or use the one from the response
     const originalUrl = data.originalUrl || data.url || "https://example.com";
-
-    // Parse stats if it's a string
-    let statsObj: { 
-      pagesCrawled: number | string; 
-      contentExtracted: string | number; 
-      vectorsCreated: number | string;
-    };
     
-    if (typeof data.stats === 'string') {
+    // Parse stats based on the format received
+    let pagesCrawled = 0;
+    let contentExtracted = "0 KB";
+    let vectorsCreated = 0;
+    
+    if (Array.isArray(data.stats)) {
+      // Handle array format from the updated API
+      pagesCrawled = Number(data.stats[0] || 0);
+      contentExtracted = String(data.stats[1] || "0 KB");
+      vectorsCreated = Number(data.stats[2] || 0);
+    } else if (typeof data.stats === 'string') {
       try {
-        statsObj = JSON.parse(data.stats);
+        const statsObj = JSON.parse(data.stats);
+        pagesCrawled = typeof statsObj.pagesCrawled === 'string'
+          ? parseInt(statsObj.pagesCrawled) || 0
+          : Number(statsObj.pagesCrawled) || 0;
+        
+        contentExtracted = String(statsObj.contentExtracted || "0 KB");
+        
+        vectorsCreated = typeof statsObj.vectorsCreated === 'string'
+          ? parseInt(statsObj.vectorsCreated) || 0
+          : Number(statsObj.vectorsCreated) || 0;
       } catch (e) {
         console.error("Failed to parse stats:", e);
-        statsObj = {
-          pagesCrawled: 0,
-          contentExtracted: "0 KB",
-          vectorsCreated: 0
-        };
       }
-    } else {
-      statsObj = data.stats;
-    }
-
-    // Parse sample questions if it's a string
-    let questionsArray = data.sampleQuestions || [];
-    if (typeof data.sampleQuestions === 'string') {
-      try {
-        questionsArray = JSON.parse(data.sampleQuestions);
-      } catch (e) {
-        console.error("Failed to parse sample questions:", e);
-        questionsArray = [];
-      }
-    }
-
-    // Now statsObj is guaranteed to be an object, not a string
-    const pagesCrawled = typeof statsObj.pagesCrawled === 'string'
-      ? parseInt(statsObj.pagesCrawled) || 0
-      : Number(statsObj.pagesCrawled) || 0;
+    } else if (typeof data.stats === 'object' && data.stats !== null) {
+      // Handle object stats format
+      const statsObj = data.stats;
+      pagesCrawled = typeof statsObj.pagesCrawled === 'string'
+        ? parseInt(statsObj.pagesCrawled) || 0
+        : Number(statsObj.pagesCrawled) || 0;
+        
+      contentExtracted = String(statsObj.contentExtracted || "0 KB");
       
-    const contentExtracted = String(statsObj.contentExtracted || "0 KB");
-    
-    const vectorsCreated = typeof statsObj.vectorsCreated === 'string'
-      ? parseInt(statsObj.vectorsCreated) || 0
-      : Number(statsObj.vectorsCreated) || 0;
+      vectorsCreated = typeof statsObj.vectorsCreated === 'string'
+        ? parseInt(statsObj.vectorsCreated) || 0
+        : Number(statsObj.vectorsCreated) || 0;
+    }
+
+    // Parse sample questions if available
+    let questions: string[] = [];
+    if (data.questions && Array.isArray(data.questions)) {
+      questions = data.questions;
+    } else if (data.sampleQuestions) {
+      if (typeof data.sampleQuestions === 'string') {
+        try {
+          questions = JSON.parse(data.sampleQuestions);
+        } catch (e) {
+          console.error("Failed to parse sample questions:", e);
+        }
+      } else if (Array.isArray(data.sampleQuestions)) {
+        questions = data.sampleQuestions;
+      }
+    }
 
     // Update the stats display with proper type handling
     setChatbotStats({
       pagesCrawled,
       contentExtracted,
       vectorsCreated,
-      sampleQuestions: Array.isArray(questionsArray) ? questionsArray : [],
+      sampleQuestions: questions,
       url: originalUrl
     });
 
@@ -81,8 +92,8 @@ const Crawler = () => {
 
     // Log the URL for debugging
     console.log("Using URL for chatbot:", originalUrl);
-    console.log("Stats:", statsObj);
-    console.log("Sample questions:", questionsArray);
+    console.log("Stats:", { pagesCrawled, contentExtracted, vectorsCreated });
+    console.log("Sample questions:", questions);
   };
 
   return (

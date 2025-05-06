@@ -1,9 +1,9 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Send, Loader } from "lucide-react";
-import { CrawlResponse } from "./CrawlerForm";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface ChatbotPreviewProps {
   stats: {
@@ -15,25 +15,7 @@ interface ChatbotPreviewProps {
   url: string;
 }
 
-interface Message {
-  content: string;
-  isUser: boolean;
-}
-
 export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      content: url
-        ? `Hello! I'm your AI assistant for ${url}. How can I help you today?`
-        : `Hello! I'm your AI assistant. How can I help you today?`,
-      isUser: false
-    }
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-
   // Format content extracted based on its type
   const formatContentExtracted = () => {
     if (typeof stats.contentExtracted === 'number') {
@@ -42,85 +24,12 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
     return stats.contentExtracted;
   };
 
-  // Auto scroll to bottom of messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!input.trim()) return;
-
-    // Add user message
-    const userMessage: Message = {
-      content: input,
-      isUser: true
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    // Ensure we have a valid URL
-    const chatUrl = url || "https://example.com";
-    console.log("Sending message with URL:", chatUrl);
-
-    try {
-      // Send message to the webhook
-      const response = await fetch("http://localhost:5678/webhook/59044fe5-81db-44aa-989b-7a677ddcf551", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: input,
-          // Use the original URL from the stats object, not the potentially modified URL from the response
-          originalUrl: chatUrl,
-          url: chatUrl // Include both for backward compatibility
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Add AI response
-      const aiMessage: Message = {
-        content: data.content || "I'm sorry, I couldn't process your request.",
-        isUser: false
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-
-      // Add error message
-      setMessages((prev) => [
-        ...prev,
-        {
-          content: "Sorry, I encountered an error. Please try again.",
-          isUser: false
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle sample question click
   const handleSampleQuestionClick = (question: string) => {
-    setInput(question);
+    console.log("Question clicked:", question);
+    // In Phase 1, this is just for logging - no actual chat functionality
   };
 
+  // For Phase 1, we'll show a read-only interface
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2">
@@ -128,59 +37,81 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
           <CardHeader>
             <CardTitle>Chatbot Preview</CardTitle>
             <CardDescription>
-              Try asking questions about the crawled website
+              Preview of the chatbot for your website
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-[420px] border rounded-md bg-gray-50 flex flex-col">
-            <div className="w-full h-full flex flex-col">
+          <CardContent>
+            <div className="h-[420px] border rounded-md bg-gray-50 flex flex-col">
               <div className="bg-dreampath-purple p-4 text-white">
                 <div className="font-semibold">Website Assistant</div>
               </div>
+              
               <div className="p-4 flex-1 bg-gray-50 overflow-y-auto">
                 <div className="flex flex-col space-y-3">
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`${
-                        message.isUser
-                          ? "bg-dreampath-purple text-white self-end"
-                          : "bg-gray-200 text-gray-800 self-start"
-                      } rounded-lg p-3 max-w-[80%] text-sm`}
-                    >
-                      {message.content}
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="bg-gray-200 rounded-lg p-3 max-w-[80%] self-start text-sm flex items-center">
-                      <Loader className="h-4 w-4 mr-2 animate-spin" />
-                      Thinking...
-                    </div>
+                  {/* Welcome message */}
+                  <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm">
+                    Hello! I'm your AI assistant for {url}. How can I help you today?
+                  </div>
+
+                  {/* If we have questions, show the first one as an example */}
+                  {stats.sampleQuestions.length > 0 && (
+                    <>
+                      <div className="bg-dreampath-purple text-white self-end rounded-lg p-3 max-w-[80%] text-sm">
+                        {stats.sampleQuestions[0]}
+                      </div>
+                      
+                      <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm">
+                        Based on the website content, I can provide you with detailed information about this topic. The website covers several key points...
+                      </div>
+                    </>
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
               </div>
+              
+              {/* Sample questions section */}
               <div className="p-3 border-t">
-                <form onSubmit={handleSubmit} className="flex">
+                <p className="text-sm text-gray-500 mb-2">Try asking about:</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {stats.sampleQuestions.map((question, index) => (
+                    <div
+                      key={index}
+                      className="bg-gray-100 text-sm p-2 rounded cursor-pointer hover:bg-gray-200"
+                      onClick={() => handleSampleQuestionClick(question)}
+                    >
+                      {question}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Phase 2 notice */}
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm">
+                  <p className="font-medium flex items-center justify-between">
+                    <span>This is a preview only.</span>
+                    <Button 
+                      variant="outline"
+                      className="border-dreampath-purple text-dreampath-purple hover:bg-dreampath-purple hover:text-white"
+                      disabled
+                    >
+                      Enable Live Chat
+                    </Button>
+                  </p>
+                </div>
+                
+                {/* Disabled input for visual consistency */}
+                <div className="mt-4 flex">
                   <input
                     type="text"
-                    placeholder="Type your question..."
-                    className="flex-1 border rounded-l-md p-2 text-sm"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
+                    placeholder="Type your question... (Preview only)"
+                    className="flex-1 border rounded-l-md p-2 text-sm bg-gray-100"
+                    disabled
                   />
                   <button
-                    type="submit"
-                    className="bg-dreampath-purple text-white px-4 py-2 rounded-r-md text-sm flex items-center"
-                    disabled={isLoading || !input.trim()}
+                    className="bg-gray-300 text-gray-600 px-4 py-2 rounded-r-md text-sm flex items-center"
+                    disabled
                   >
-                    {isLoading ? (
-                      <Loader className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
+                    <Send className="h-4 w-4" />
                   </button>
-                </form>
+                </div>
               </div>
             </div>
           </CardContent>
