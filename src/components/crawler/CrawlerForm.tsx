@@ -23,6 +23,12 @@ export interface CrawlResponse {
   url: string | null; // URL can be null
   originalUrl?: string; // Added to preserve the original URL entered by the user
   sampleQuestions: string[] | string; // Sample questions can be returned as a JSON string
+
+  // For direct Knowledge Tool responses
+  response?: Array<{
+    pageContent?: string;
+    metadata?: any;
+  }>;
 }
 
 export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
@@ -53,10 +59,16 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
       return;
     }
 
-    if (!validateUrl(url)) {
+    // Prepare the URL - ensure it has http:// or https:// prefix
+    let processedUrl = url.trim();
+    if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+      processedUrl = 'https://' + processedUrl;
+    }
+
+    if (!validateUrl(processedUrl)) {
       toast({
         title: "Invalid URL",
-        description: "Please enter a valid URL including http:// or https://",
+        description: "Please enter a valid URL",
         variant: "destructive"
       });
       return;
@@ -67,6 +79,8 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
     setCurrentStep(0);
     setProgress(0);
 
+    console.log("Submitting URL:", processedUrl);
+
     try {
       // Update API endpoint to match n8n webhook configuration
       const response = await fetch('http://localhost:5678/webhook-test/index', {
@@ -75,9 +89,9 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: url,
+          url: processedUrl,
           // Add the original URL as a separate field to ensure it's preserved
-          originalUrl: url
+          originalUrl: processedUrl
         }),
       });
 
@@ -87,8 +101,49 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
 
       // Process the response directly instead of polling
       const data: CrawlResponse = await response.json();
+      console.log("Response data:", data);
 
-      if (data.success) {
+      // Check if we have a response object from the Knowledge Tool
+      if (data.response && Array.isArray(data.response)) {
+        console.log("Knowledge Tool response detected");
+
+        // Create a synthetic success response
+        const syntheticData: CrawlResponse = {
+          success: true,
+          stats: {
+            pagesCrawled: data.response.length,
+            contentExtracted: `${Math.round(data.response.reduce((acc, item) => acc + (item.pageContent?.length || 0), 0) / 1024)} KB`,
+            vectorsCreated: data.response.length
+          },
+          url: processedUrl,
+          originalUrl: processedUrl,
+          sampleQuestions: [
+            "What services do you offer?",
+            "How can I contact you?",
+            "What are your business hours?",
+            "Where are you located?",
+            "Do you have any special offers?"
+          ]
+        };
+
+        // Simulate processing steps for better UX
+        simulateProcessingSteps(
+          steps,
+          setCurrentStep,
+          setProgress,
+          setEstimatedTime,
+          () => {
+            setIsProcessing(false);
+            onSuccess(syntheticData);
+
+            toast({
+              title: "Chatbot Created Successfully",
+              description: "Your website has been processed and chatbot is ready for use",
+            });
+          }
+        );
+      } else if (data.success) {
+        // Regular success response format
         // Simulate processing steps for better UX
         simulateProcessingSteps(
           steps,
@@ -99,8 +154,8 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
             setIsProcessing(false);
             onSuccess({
               ...data,
-              url: data.url,
-              originalUrl: url // Pass the original URL entered by the user
+              url: data.url || processedUrl,
+              originalUrl: processedUrl // Pass the processed URL
             });
 
             toast({
