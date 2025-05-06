@@ -18,16 +18,22 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
 
   console.log("Processing URL:", processedUrl);
 
-  // Attempt the real API call but with no-cors mode
-  // Note: This is a "fire and forget" approach as no-cors won't return usable data
-  fetch('http://localhost:5678/webhook-test/index', {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'text/plain' // Changed to text/plain for sending just the URL
-    },
-    mode: 'no-cors', // This prevents CORS errors but won't return usable data
-    body: processedUrl // Send just the URL as a string
-  }).catch(err => console.log("CORS request attempted:", err));
+  try {
+    // Send the request to the webhook
+    // Using a more reliable approach for cross-origin requests
+    const webhookResponse = fetch('http://localhost:5678/webhook-test/index', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      mode: 'no-cors', // This prevents CORS errors but won't return usable data
+      body: processedUrl // Send just the URL string
+    });
+    
+    // Log the attempt
+    console.log("Webhook request sent to:", 'http://localhost:5678/webhook-test/index');
+    console.log("With body:", processedUrl);
+  } catch (err) {
+    console.error("Error sending webhook request:", err);
+  }
   
   // For development, simulate a successful response with mock data
   // In production, you'd replace this with the real API response
