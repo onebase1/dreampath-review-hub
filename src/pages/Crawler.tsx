@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,23 +48,23 @@ const Crawler = () => {
       }
     }
 
+    // Now statsObj is guaranteed to be an object, not a string
+    const pagesCrawled = typeof statsObj.pagesCrawled === 'string'
+      ? parseInt(statsObj.pagesCrawled) || 0
+      : Number(statsObj.pagesCrawled) || 0;
+      
+    const contentExtracted = String(statsObj.contentExtracted || "0 KB");
+    
+    const vectorsCreated = typeof statsObj.vectorsCreated === 'string'
+      ? parseInt(statsObj.vectorsCreated) || 0
+      : Number(statsObj.vectorsCreated) || 0;
+
     // Update the stats display with proper type handling
     setChatbotStats({
-      // Ensure pagesCrawled is always a number
-      pagesCrawled: typeof statsObj.pagesCrawled === 'string'
-        ? parseInt(statsObj.pagesCrawled) || 0
-        : Number(statsObj.pagesCrawled) || 0,
-
-      // Content extracted comes in as a string like "145 KB"
-      contentExtracted: String(statsObj.contentExtracted || "0 KB"),
-
-      // Ensure vectorsCreated is always a number
-      vectorsCreated: typeof statsObj.vectorsCreated === 'string'
-        ? parseInt(statsObj.vectorsCreated) || 0
-        : Number(statsObj.vectorsCreated) || 0,
-
-      sampleQuestions: questionsArray,
-      // Use the original URL to ensure consistency
+      pagesCrawled,
+      contentExtracted,
+      vectorsCreated,
+      sampleQuestions: Array.isArray(questionsArray) ? questionsArray : [],
       url: originalUrl
     });
 
