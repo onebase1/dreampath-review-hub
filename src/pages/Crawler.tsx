@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +24,12 @@ const Crawler = () => {
     const originalUrl = data.originalUrl || data.url || "https://example.com";
 
     // Parse stats if it's a string
-    let statsObj = data.stats;
+    let statsObj: { 
+      pagesCrawled: number | string; 
+      contentExtracted: string | number; 
+      vectorsCreated: number | string;
+    };
+    
     if (typeof data.stats === 'string') {
       try {
         statsObj = JSON.parse(data.stats);
@@ -35,6 +41,8 @@ const Crawler = () => {
           vectorsCreated: 0
         };
       }
+    } else {
+      statsObj = data.stats;
     }
 
     // Parse sample questions if it's a string
