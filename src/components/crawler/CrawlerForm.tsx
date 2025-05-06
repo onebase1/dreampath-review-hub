@@ -44,23 +44,31 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
 
     console.log("Submitting URL:", url);
     
-    // Progress simulation helper
+    // Start progress simulation
     const progressInterval = simulateProgressWhileWaiting();
 
     try {
+      // Call the crawler service
       const response = await processCrawlerUrl(url);
       
       // Clear the progress simulation
       clearInterval(progressInterval);
       setProgress(100);
       
-      // Call onSuccess with the response data
-      onSuccess(response);
+      // Call onSuccess with the response data from the webhook
+      console.log("Crawler service returned:", response);
+      
+      // Ensure we have the response data before calling onSuccess
+      if (response) {
+        onSuccess(response);
 
-      toast({
-        title: "Success!",
-        description: response.message || "Website successfully processed",
-      });
+        toast({
+          title: "Success!",
+          description: response.message || "Website successfully processed",
+        });
+      } else {
+        throw new Error("No response data received from crawler service");
+      }
 
     } catch (error) {
       // Clear progress simulation
