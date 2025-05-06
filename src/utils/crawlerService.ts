@@ -23,13 +23,10 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
   fetch('http://localhost:5678/webhook-test/index', {
     method: 'POST',
     headers: { 
-      'Content-Type': 'application/json'
+      'Content-Type': 'text/plain' // Changed to text/plain for sending just the URL
     },
     mode: 'no-cors', // This prevents CORS errors but won't return usable data
-    body: JSON.stringify({ 
-      url: processedUrl
-      // Removed originalUrl parameter to avoid duplication
-    })
+    body: processedUrl // Send just the URL as a string
   }).catch(err => console.log("CORS request attempted:", err));
   
   // For development, simulate a successful response with mock data
