@@ -44,9 +44,11 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
         } catch (err) {
           console.warn("Could not parse questions as JSON:", err);
           // If can't parse as JSON, try to split by comma
-          data.questions = typeof data.questions === 'string' ? 
-            data.questions.split(',').map((q: string) => q.trim()).filter(Boolean) : 
-            [];
+          if (typeof data.questions === 'string') {
+            data.questions = data.questions.split(',').map((q: string) => q.trim()).filter(Boolean);
+          } else {
+            data.questions = [];
+          }
         }
       }
       
@@ -63,11 +65,13 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
     // If we have valid data from the webhook, use it
     if (data && data.success) {
       // Ensure questions and sampleQuestions are arrays
-      const parsedQuestions = Array.isArray(data.questions) ? 
-        data.questions : 
-        (typeof data.questions === 'string' ? 
-          data.questions.split(',').map((q: string) => q.trim()).filter(Boolean) : 
-          []);
+      let parsedQuestions: string[] = [];
+      
+      if (Array.isArray(data.questions)) {
+        parsedQuestions = data.questions;
+      } else if (typeof data.questions === 'string') {
+        parsedQuestions = data.questions.split(',').map((q: string) => q.trim()).filter(Boolean);
+      }
       
       return {
         success: data.success,
