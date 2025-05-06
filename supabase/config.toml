@@ -1,1 +1,5 @@
+
 project_id = "lmifuqesostqcfyshtdl"
+
+[functions.generate-embedding]
+verify_jwt = false

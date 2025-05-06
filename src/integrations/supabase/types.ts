@@ -30,6 +30,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          last_active_at: string | null
+          questions_asked: number | null
+          session_id: string
+          status: string | null
+          user_email: string | null
+          user_name: string | null
+          website_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          last_active_at?: string | null
+          questions_asked?: number | null
+          session_id?: string
+          status?: string | null
+          user_email?: string | null
+          user_name?: string | null
+          website_url: string
+        }
+        Update: {
+          created_at?: string | null
+          last_active_at?: string | null
+          questions_asked?: number | null
+          session_id?: string
+          status?: string | null
+          user_email?: string | null
+          user_name?: string | null
+          website_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

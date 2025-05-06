@@ -1,10 +1,21 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Send, Maximize2, MessageSquare } from "lucide-react";
+import { CheckCircle, Send, Maximize2, MessageSquare, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { LeadCaptureForm } from "./LeadCaptureForm";
+import {
+  ChatMessage,
+  ChatSession,
+  createChatSession,
+  getCurrentSession,
+  askQuestion
+} from "@/services/chatbotService";
 
 interface ChatbotPreviewProps {
   stats: {
@@ -17,7 +28,22 @@ interface ChatbotPreviewProps {
 }
 
 export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
+  // State for UI
   const [expanded, setExpanded] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [isSessionInitialized, setIsSessionInitialized] = useState(false);
+  const [isChatActivated, setIsChatActivated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [questionsRemaining, setQuestionsRemaining] = useState(5);
+  
+  // State for chat
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [session, setSession] = useState<ChatSession | null>(null);
+  
+  // Refs
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
   // Format content extracted based on its type
   const formatContentExtracted = () => {
@@ -27,9 +53,136 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
     return stats.contentExtracted;
   };
 
+  // Initialize chat session
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        // Check for existing session first
+        const existingSession = getCurrentSession();
+        
+        if (existingSession && existingSession.websiteUrl === url) {
+          console.log("Using existing session:", existingSession);
+          setSession(existingSession);
+          setMessages(existingSession.messages);
+          setQuestionsRemaining(5 - existingSession.questionsAsked);
+          
+          // Check if user is over quota
+          if (existingSession.questionsAsked >= 5 && existingSession.status === 'trial') {
+            setShowLeadForm(true);
+          }
+        } else {
+          // Create new session
+          console.log("Creating new session for:", url);
+          const newSession = await createChatSession(url);
+          setSession(newSession);
+          setMessages(newSession.messages);
+        }
+        
+        setIsSessionInitialized(true);
+      } catch (error) {
+        console.error("Error initializing chat session:", error);
+        toast({
+          title: "Session Error",
+          description: "Could not initialize chat session. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    if (url) {
+      initSession();
+    }
+  }, [url, toast]);
+
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const activateChat = () => {
+    if (isSessionInitialized) {
+      setIsChatActivated(true);
+    } else {
+      toast({
+        title: "Please wait",
+        description: "Chat session is still initializing",
+      });
+    }
+  };
+
   const handleSampleQuestionClick = (question: string) => {
-    console.log("Question clicked:", question);
-    // In Phase 1, this is just for logging - no actual chat functionality
+    if (!isChatActivated) {
+      activateChat();
+      setTimeout(() => {
+        handleSendMessage(question);
+      }, 500);
+      return;
+    }
+    
+    setInputValue(question);
+    handleSendMessage(question);
+  };
+
+  const handleSendMessage = async (content?: string) => {
+    const messageToSend = content || inputValue;
+    
+    if (!messageToSend.trim() || !session) return;
+    if (isLoading) return;
+    
+    // Check if we need to show lead form
+    if (session.questionsAsked >= 5 && session.status === 'trial') {
+      setShowLeadForm(true);
+      return;
+    }
+    
+    setIsLoading(true);
+    setInputValue("");
+    
+    try {
+      const result = await askQuestion(messageToSend, session);
+      
+      // Update UI with new messages from service
+      const updatedSession = getCurrentSession();
+      if (updatedSession) {
+        setSession(updatedSession);
+        setMessages(updatedSession.messages);
+        setQuestionsRemaining(Math.max(0, 5 - updatedSession.questionsAsked));
+        
+        if (result.error === "Free question limit reached") {
+          setShowLeadForm(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to get a response. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleLeadCaptureSuccess = () => {
+    setShowLeadForm(false);
+    toast({
+      title: "Thank you!",
+      description: "You can now continue asking questions about this website."
+    });
+    
+    // Refresh the session
+    const updatedSession = getCurrentSession();
+    if (updatedSession) {
+      setSession(updatedSession);
+    }
   };
 
   // Ensure sampleQuestions is an array for safe rendering
@@ -43,7 +196,9 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
             <div>
               <CardTitle>Chatbot Preview</CardTitle>
               <CardDescription>
-                Preview of the chatbot for your website
+                {isChatActivated 
+                  ? `${questionsRemaining}/5 free questions remaining` 
+                  : "Preview of the chatbot for your website"}
               </CardDescription>
             </div>
             <Button 
@@ -51,92 +206,109 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
               size="icon" 
               onClick={() => setExpanded(!expanded)}
               className="ml-2"
-              title={expanded ? "Collapse view" : "Expand view"}
+              title={expanded ? "Show stats" : "Expand view"}
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-md overflow-hidden shadow-sm h-[500px] flex flex-col bg-gray-50">
-              {/* Chat header */}
-              <div className="bg-dreampath-purple p-3 flex items-center text-white">
-                <MessageSquare className="h-5 w-5 mr-2" />
-                <div className="font-medium">Website Assistant</div>
+            {showLeadForm ? (
+              <div className="border rounded-md overflow-hidden shadow-sm h-[500px] flex items-center justify-center bg-gray-50 p-4">
+                <LeadCaptureForm 
+                  sessionId={session?.sessionId || ""} 
+                  onSuccess={handleLeadCaptureSuccess} 
+                />
               </div>
-              
-              {/* Chat messages area with fixed height and scrolling */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="flex flex-col space-y-4">
-                  {/* Welcome message */}
-                  <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
-                    Hello! I'm your AI assistant for {url}. How can I help you today?
+            ) : (
+              <div className="border rounded-md overflow-hidden shadow-sm h-[500px] flex flex-col bg-white">
+                {/* Chat header */}
+                <div className="bg-dreampath-purple p-3 flex items-center justify-between text-white">
+                  <div className="flex items-center">
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    <div className="font-medium">Website Assistant</div>
                   </div>
-
-                  {/* If we have questions, show the first one as an example */}
-                  {questions.length > 0 && (
-                    <>
-                      <div className="bg-dreampath-purple text-white self-end rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
-                        {questions[0]}
-                      </div>
-                      
-                      <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
-                        Based on the website content, I can provide you with detailed information about this topic. The website covers several key points including services offered, eligibility criteria, and available support options.
-                      </div>
-                    </>
-                  )}
+                  <Badge variant="secondary" className="text-xs bg-white/20 hover:bg-white/30">
+                    {isChatActivated 
+                      ? `${questionsRemaining}/5 Questions` 
+                      : "Preview Mode"}
+                  </Badge>
                 </div>
-              </ScrollArea>
-              
-              {/* Sample questions chips */}
-              <div className="p-3 border-t bg-white">
-                <p className="text-xs text-gray-500 mb-2">Try asking about:</p>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {questions.slice(0, 3).map((question, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-100 text-xs p-2 rounded-full cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleSampleQuestionClick(question)}
+                
+                {/* Chat messages area with fixed height and scrolling */}
+                <ScrollArea className="flex-1 p-4 bg-gray-50">
+                  <div className="flex flex-col space-y-4">
+                    {messages.map((msg, index) => (
+                      <div 
+                        key={index}
+                        className={`${msg.isUser 
+                          ? 'bg-dreampath-purple text-white self-end' 
+                          : 'bg-white border border-gray-100 text-gray-800 self-start'} 
+                          rounded-lg p-3 max-w-[80%] text-sm shadow-sm`}
+                      >
+                        {msg.content}
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+                
+                <Separator />
+                
+                {/* Sample questions chips */}
+                <div className="p-3 bg-white">
+                  <p className="text-xs text-gray-500 mb-2">Try asking about:</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {questions.slice(0, 3).map((question, index) => (
+                      <div
+                        key={index}
+                        className="bg-gray-100 hover:bg-gray-200 text-xs p-2 rounded-full cursor-pointer transition-colors"
+                        onClick={() => handleSampleQuestionClick(question)}
+                      >
+                        {question.length > 30 ? question.substring(0, 30) + '...' : question}
+                      </div>
+                    ))}
+                    {questions.length > 3 && (
+                      <div className="bg-gray-100 text-xs p-2 rounded-full cursor-pointer hover:bg-gray-200 transition-colors">
+                        +{questions.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Input field or activation button */}
+                  {isChatActivated ? (
+                    <div className="mt-3 flex items-center">
+                      <input
+                        type="text"
+                        placeholder="Type your message here..."
+                        className="flex-1 border rounded-l-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-dreampath-purple"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        disabled={isLoading}
+                      />
+                      <button
+                        className={`${
+                          isLoading 
+                            ? 'bg-gray-400' 
+                            : 'bg-dreampath-purple hover:bg-dreampath-dark-purple'
+                        } text-white px-4 py-2 rounded-r-md text-sm flex items-center transition-colors`}
+                        onClick={() => handleSendMessage()}
+                        disabled={isLoading}
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={activateChat}
+                      className="w-full mt-3 bg-dreampath-purple hover:bg-dreampath-dark-purple"
                     >
-                      {question.length > 30 ? question.substring(0, 30) + '...' : question}
-                    </div>
-                  ))}
-                  {questions.length > 3 && (
-                    <div className="bg-gray-100 text-xs p-2 rounded-full cursor-pointer hover:bg-gray-200 transition-colors">
-                      +{questions.length - 3} more
-                    </div>
+                      Try it now
+                    </Button>
                   )}
-                </div>
-                
-                {/* Preview notice */}
-                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-md p-2 text-xs">
-                  <span className="font-medium text-amber-800">This is a preview only.</span>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="border-dreampath-purple text-dreampath-purple hover:bg-dreampath-purple hover:text-white"
-                    disabled
-                  >
-                    Enable Live Chat
-                  </Button>
-                </div>
-                
-                {/* Input field */}
-                <div className="mt-3 flex">
-                  <input
-                    type="text"
-                    placeholder="Type your question... (Preview only)"
-                    className="flex-1 border rounded-l-md p-2 text-sm bg-gray-100"
-                    disabled
-                  />
-                  <button
-                    className="bg-gray-300 text-gray-600 px-4 py-2 rounded-r-md text-sm flex items-center"
-                    disabled
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -184,11 +356,12 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
                         questions.map((question, index) => (
                           <li
                             key={index}
-                            className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100 transition-colors"
+                            className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100 transition-colors group"
                             onClick={() => handleSampleQuestionClick(question)}
                           >
                             <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
                             <span>{question}</span>
+                            <ArrowRight className="h-3 w-3 ml-1 mt-0.5 opacity-0 group-hover:opacity-100 text-gray-400 transition-opacity" />
                           </li>
                         ))
                       ) : (
