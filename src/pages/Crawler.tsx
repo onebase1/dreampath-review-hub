@@ -12,7 +12,7 @@ const Crawler = () => {
   const [isChatbotReady, setIsChatbotReady] = useState(false);
   const [chatbotStats, setChatbotStats] = useState({
     pagesCrawled: 0,
-    contentExtracted: 0,
+    contentExtracted: "", // Changed to string type
     vectorsCreated: 0,
     sampleQuestions: [] as string[],
     url: ""
@@ -21,23 +21,23 @@ const Crawler = () => {
   const handleCrawlSuccess = (data: CrawlResponse) => {
     // Update the stats display with proper type handling
     setChatbotStats({
-      // Convert to number if it's a string
-      pagesCrawled: typeof data.stats.pagesCrawled === 'string' 
-        ? parseInt(data.stats.pagesCrawled, 10) || 0
-        : data.stats.pagesCrawled || 0,
-        
-      // Keep content extracted as is
-      contentExtracted: data.stats.contentExtracted,
-      
-      // Convert to number if it's a string
+      // Ensure pagesCrawled is always a number
+      pagesCrawled: typeof data.stats.pagesCrawled === 'string'
+        ? Number(data.stats.pagesCrawled) || 0
+        : Number(data.stats.pagesCrawled) || 0,
+
+      // Content extracted comes in as a string like "145 KB"
+      contentExtracted: String(data.stats.contentExtracted),
+
+      // Ensure vectorsCreated is always a number
       vectorsCreated: typeof data.stats.vectorsCreated === 'string'
-        ? parseInt(data.stats.vectorsCreated, 10) || 0 
-        : data.stats.vectorsCreated || 0,
-        
+        ? Number(data.stats.vectorsCreated) || 0
+        : Number(data.stats.vectorsCreated) || 0,
+
       sampleQuestions: data.sampleQuestions || [],
       url: data.url
     });
-    
+
     // Show completion and set chatbot ready
     setIsChatbotReady(true);
   };
@@ -51,7 +51,7 @@ const Crawler = () => {
           Just enter the URL and we'll do the rest.
         </p>
       </div>
-      
+
       <Card className="mb-8 border-2 border-gray-100 shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl">Enter Website URL</CardTitle>
@@ -63,7 +63,7 @@ const Crawler = () => {
           <CrawlerForm onSuccess={handleCrawlSuccess} />
         </CardContent>
       </Card>
-      
+
       {isChatbotReady && (
         <div className="animate-fade-in">
           <Tabs defaultValue="preview" className="w-full">
@@ -85,19 +85,19 @@ const Crawler = () => {
                 <span>Customize</span>
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="preview" className="mt-0">
               <ChatbotPreview stats={chatbotStats} url={chatbotStats.url} />
             </TabsContent>
-            
+
             <TabsContent value="embed">
               <EmbedCode url={chatbotStats.url} />
             </TabsContent>
-            
+
             <TabsContent value="analytics">
               <AnalyticsTab />
             </TabsContent>
-            
+
             <TabsContent value="customize">
               <CustomizeTab />
             </TabsContent>
