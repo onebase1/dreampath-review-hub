@@ -8,6 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Globe, Code, BarChart2, Settings, CheckCircle, AlertCircle, Loader } from "lucide-react";
 
+// Interface for the crawler response
+interface CrawlResponse {
+  success: boolean;
+  stats: {
+    pagesCrawled: number;
+    contentExtracted: string;
+    vectorsCreated: number;
+  };
+  url: string;
+  sampleQuestions: string[];
+}
+
 const Crawler = () => {
   const [url, setUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,7 +89,7 @@ const Crawler = () => {
     setIsChatbotReady(false);
     
     try {
-      // Updated API endpoint to match n8n webhook configuration
+      // Update API endpoint to match n8n webhook configuration
       const response = await fetch('http://localhost:5678/webhook-test/index', {
         method: 'POST',
         headers: {
@@ -90,8 +102,23 @@ const Crawler = () => {
         throw new Error(`Error: ${response.status}`);
       }
       
-      // Start polling for status
-      pollForStatus();
+      // Process the response directly instead of polling
+      const data: CrawlResponse = await response.json();
+      
+      if (data.success) {
+        // Update the stats display
+        setChatbotStats({
+          pagesCrawled: typeof data.stats.pagesCrawled === 'number' ? data.stats.pagesCrawled : parseInt(data.stats.pagesCrawled.toString()),
+          contentExtracted: typeof data.stats.contentExtracted === 'number' ? data.stats.contentExtracted : parseInt(data.stats.contentExtracted.toString()),
+          vectorsCreated: typeof data.stats.vectorsCreated === 'number' ? data.stats.vectorsCreated : parseInt(data.stats.vectorsCreated.toString()),
+          sampleQuestions: data.sampleQuestions || []
+        });
+        
+        // Show completion and set chatbot ready
+        simulateProcessingSteps();
+      } else {
+        throw new Error("Processing failed");
+      }
       
     } catch (error) {
       console.error('Error submitting URL:', error);
@@ -104,110 +131,57 @@ const Crawler = () => {
     }
   };
 
-  // Poll for status updates from the n8n webhook
-  const pollForStatus = async () => {
-    // Create a unique ID for this job
-    const jobId = Date.now().toString();
-    let statusCheckCount = 0;
+  // Simulate processing steps for a better UX
+  const simulateProcessingSteps = () => {
+    let step = 0;
+    let progress = 0;
+    let remainingTime = steps.reduce((total, step) => total + step.time, 0);
     
-    const interval = setInterval(async () => {
-      try {
-        // Updated API endpoint to match n8n webhook configuration
-        const response = await fetch(`http://localhost:5678/webhook-test/status?jobId=${jobId}`);
+    const interval = setInterval(() => {
+      if (step >= steps.length) {
+        clearInterval(interval);
+        setIsProcessing(false);
+        setIsChatbotReady(true);
         
-        if (!response.ok) {
-          throw new Error(`Error fetching status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Update progress based on real data
-        setProgress(data.progress || 0);
-        setCurrentStep(data.currentStep || 0);
-        setEstimatedTime(data.estimatedTime || 0);
-        
-        // Update stats if available
-        if (data.stats) {
-          setChatbotStats({
-            pagesCrawled: data.stats.pagesCrawled || 0,
-            contentExtracted: data.stats.contentExtracted || 0,
-            vectorsCreated: data.stats.vectorsCreated || 0,
-            sampleQuestions: data.stats.sampleQuestions || []
-          });
-        }
-        
-        // Check if processing is complete
-        if (data.status === 'complete') {
-          clearInterval(interval);
-          setIsProcessing(false);
-          setIsChatbotReady(true);
-          
-          // Fetch the final chatbot data
-          fetchChatbotData();
-          
-          toast({
-            title: "Chatbot Created Successfully",
-            description: "Your website has been processed and chatbot is ready for use",
-          });
-        } else if (data.status === 'error') {
-          clearInterval(interval);
-          setIsProcessing(false);
-          
-          toast({
-            title: "Error Processing Website",
-            description: data.errorMessage || "There was an error processing your website",
-            variant: "destructive"
-          });
-        }
-        
-        // Add a timeout after too many checks
-        statusCheckCount++;
-        if (statusCheckCount > 100) {  // About 5 minutes of checking
-          clearInterval(interval);
-          setIsProcessing(false);
-          
-          toast({
-            title: "Processing Timeout",
-            description: "The operation took too long to complete. Please try again later.",
-            variant: "destructive"
-          });
-        }
-        
-      } catch (error) {
-        console.error('Error checking status:', error);
-        // Don't stop the interval on network errors - just try again
+        toast({
+          title: "Chatbot Created Successfully",
+          description: "Your website has been processed and chatbot is ready for use",
+        });
+        return;
       }
-    }, 3000);  // Check every 3 seconds
+      
+      setCurrentStep(step);
+      
+      // Calculate progress percentage across all steps
+      const stepProgress = (progress % 100) / 100;
+      const overallProgress = Math.min(
+        ((step + stepProgress) / steps.length) * 100, 
+        99
+      );
+      
+      setProgress(overallProgress);
+      
+      // Update remaining time
+      remainingTime = Math.max(0, remainingTime - 0.1);
+      setEstimatedTime(Math.round(remainingTime));
+      
+      // Increment progress within the current step
+      progress += 5;
+      if (progress >= 100) {
+        progress = 0;
+        step++;
+      }
+    }, 100);
   };
 
-  // Fetch the final chatbot data
-  const fetchChatbotData = async () => {
-    try {
-      // Updated API endpoint to match n8n webhook configuration
-      const response = await fetch(`http://localhost:5678/webhook-test/chatbot?url=${encodeURIComponent(url)}`);
-      
-      if (!response.ok) {
-        throw new Error(`Error fetching chatbot data: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Update chatbot data with real information
-      setChatbotStats({
-        pagesCrawled: data.pagesCrawled || chatbotStats.pagesCrawled,
-        contentExtracted: data.contentExtracted || chatbotStats.contentExtracted,
-        vectorsCreated: data.vectorsCreated || chatbotStats.vectorsCreated,
-        sampleQuestions: data.sampleQuestions || chatbotStats.sampleQuestions
-      });
-      
-    } catch (error) {
-      console.error('Error fetching chatbot data:', error);
-      toast({
-        title: "Warning",
-        description: "Chatbot created but couldn't fetch all details. Some information may be incomplete.",
-        variant: "default"
-      });
-    }
+  // Function to copy embed code to clipboard
+  const copyEmbedCode = () => {
+    const embedCode = document.querySelector('pre')?.textContent || '';
+    navigator.clipboard.writeText(embedCode);
+    toast({
+      title: "Copied to clipboard",
+      description: "The embed code has been copied to your clipboard"
+    });
   };
 
   return (
@@ -389,7 +363,7 @@ const Crawler = () => {
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-500">Content Extracted</span>
-                            <span className="font-medium">{chatbotStats.contentExtracted} KB</span>
+                            <span className="font-medium">{typeof chatbotStats.contentExtracted === 'string' ? chatbotStats.contentExtracted : `${chatbotStats.contentExtracted} KB`}</span>
                           </div>
                           <Progress value={100} className="h-1" />
                         </div>
@@ -436,7 +410,8 @@ const Crawler = () => {
     botId: "bot_${Math.random().toString(36).substring(2, 10)}",
     apiKey: "${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}",
     theme: "light",
-    position: "bottom-right"
+    position: "bottom-right",
+    sourceUrl: "${url}"
   }
 </script>
 <script src="https://cdn.dreampath.ai/chatbot.js" async></script>`}
@@ -444,7 +419,12 @@ const Crawler = () => {
                   </div>
                   
                   <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                    <Button className="flex-1">Copy Code</Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={copyEmbedCode}
+                    >
+                      Copy Code
+                    </Button>
                     <Button variant="outline" className="flex-1">Download as HTML</Button>
                   </div>
                 </CardContent>
