@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,7 +53,7 @@ const Crawler = () => {
     setChatbotStats({
       // Ensure pagesCrawled is always a number
       pagesCrawled: typeof statsObj.pagesCrawled === 'string'
-        ? Number(statsObj.pagesCrawled) || 0
+        ? parseInt(statsObj.pagesCrawled) || 0
         : Number(statsObj.pagesCrawled) || 0,
 
       // Content extracted comes in as a string like "145 KB"
@@ -60,7 +61,7 @@ const Crawler = () => {
 
       // Ensure vectorsCreated is always a number
       vectorsCreated: typeof statsObj.vectorsCreated === 'string'
-        ? Number(statsObj.vectorsCreated) || 0
+        ? parseInt(statsObj.vectorsCreated) || 0
         : Number(statsObj.vectorsCreated) || 0,
 
       sampleQuestions: questionsArray,
