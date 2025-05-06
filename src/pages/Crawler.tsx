@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +13,7 @@ const Crawler = () => {
   const [isChatbotReady, setIsChatbotReady] = useState(false);
   const [chatbotStats, setChatbotStats] = useState({
     pagesCrawled: 0,
-    contentExtracted: "", // Changed to string type
+    contentExtracted: "", 
     vectorsCreated: 0,
     sampleQuestions: [] as string[],
     url: ""
