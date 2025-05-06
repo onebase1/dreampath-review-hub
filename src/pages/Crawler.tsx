@@ -20,24 +20,50 @@ const Crawler = () => {
 
   const handleCrawlSuccess = (data: CrawlResponse) => {
     // Preserve the original URL from the data or use the one from the response
-    const originalUrl = data.originalUrl || data.url;
+    const originalUrl = data.originalUrl || data.url || "https://example.com";
+
+    // Parse stats if it's a string
+    let statsObj = data.stats;
+    if (typeof data.stats === 'string') {
+      try {
+        statsObj = JSON.parse(data.stats);
+      } catch (e) {
+        console.error("Failed to parse stats:", e);
+        statsObj = {
+          pagesCrawled: 0,
+          contentExtracted: "0 KB",
+          vectorsCreated: 0
+        };
+      }
+    }
+
+    // Parse sample questions if it's a string
+    let questionsArray = data.sampleQuestions || [];
+    if (typeof data.sampleQuestions === 'string') {
+      try {
+        questionsArray = JSON.parse(data.sampleQuestions);
+      } catch (e) {
+        console.error("Failed to parse sample questions:", e);
+        questionsArray = [];
+      }
+    }
 
     // Update the stats display with proper type handling
     setChatbotStats({
       // Ensure pagesCrawled is always a number
-      pagesCrawled: typeof data.stats.pagesCrawled === 'string'
-        ? Number(data.stats.pagesCrawled) || 0
-        : Number(data.stats.pagesCrawled) || 0,
+      pagesCrawled: typeof statsObj.pagesCrawled === 'string'
+        ? Number(statsObj.pagesCrawled) || 0
+        : Number(statsObj.pagesCrawled) || 0,
 
       // Content extracted comes in as a string like "145 KB"
-      contentExtracted: String(data.stats.contentExtracted),
+      contentExtracted: String(statsObj.contentExtracted || "0 KB"),
 
       // Ensure vectorsCreated is always a number
-      vectorsCreated: typeof data.stats.vectorsCreated === 'string'
-        ? Number(data.stats.vectorsCreated) || 0
-        : Number(data.stats.vectorsCreated) || 0,
+      vectorsCreated: typeof statsObj.vectorsCreated === 'string'
+        ? Number(statsObj.vectorsCreated) || 0
+        : Number(statsObj.vectorsCreated) || 0,
 
-      sampleQuestions: data.sampleQuestions || [],
+      sampleQuestions: questionsArray,
       // Use the original URL to ensure consistency
       url: originalUrl
     });
@@ -47,6 +73,8 @@ const Crawler = () => {
 
     // Log the URL for debugging
     console.log("Using URL for chatbot:", originalUrl);
+    console.log("Stats:", statsObj);
+    console.log("Sample questions:", questionsArray);
   };
 
   return (

@@ -14,15 +14,15 @@ interface CrawlerFormProps {
 
 // Interface for the crawler response
 export interface CrawlResponse {
-  success: boolean;
+  success: boolean | string; // Can be "true" as a string
   stats: {
     pagesCrawled: number | string;
     contentExtracted: string | number;
     vectorsCreated: number | string;
-  };
-  url: string;
+  } | string; // Stats can be returned as a JSON string
+  url: string | null; // URL can be null
   originalUrl?: string; // Added to preserve the original URL entered by the user
-  sampleQuestions: string[];
+  sampleQuestions: string[] | string; // Sample questions can be returned as a JSON string
 }
 
 export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {

@@ -23,7 +23,12 @@ interface Message {
 export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
-    { content: `Hello! I'm your AI assistant for ${url}. How can I help you today?`, isUser: false }
+    {
+      content: url
+        ? `Hello! I'm your AI assistant for ${url}. How can I help you today?`
+        : `Hello! I'm your AI assistant. How can I help you today?`,
+      isUser: false
+    }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -57,6 +62,10 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
     setInput("");
     setIsLoading(true);
 
+    // Ensure we have a valid URL
+    const chatUrl = url || "https://example.com";
+    console.log("Sending message with URL:", chatUrl);
+
     try {
       // Send message to the webhook
       const response = await fetch("http://localhost:5678/webhook/59044fe5-81db-44aa-989b-7a677ddcf551", {
@@ -67,7 +76,8 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
         body: JSON.stringify({
           message: input,
           // Use the original URL from the stats object, not the potentially modified URL from the response
-          originalUrl: url
+          originalUrl: chatUrl,
+          url: chatUrl // Include both for backward compatibility
         }),
       });
 
@@ -215,16 +225,22 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
             <div className="mt-6">
               <h3 className="font-medium text-sm text-gray-700 mb-2">Sample Questions</h3>
               <ul className="space-y-2">
-                {stats.sampleQuestions.map((question, index) => (
-                  <li
-                    key={index}
-                    className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSampleQuestionClick(question)}
-                  >
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
-                    <span>{question}</span>
+                {stats.sampleQuestions && stats.sampleQuestions.length > 0 ? (
+                  stats.sampleQuestions.map((question, index) => (
+                    <li
+                      key={index}
+                      className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSampleQuestionClick(question)}
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
+                      <span>{question}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="bg-gray-50 p-2 rounded text-sm">
+                    <span>No sample questions available</span>
                   </li>
-                ))}
+                )}
               </ul>
             </div>
           </CardContent>
