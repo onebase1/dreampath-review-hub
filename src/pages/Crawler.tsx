@@ -19,6 +19,9 @@ const Crawler = () => {
   });
 
   const handleCrawlSuccess = (data: CrawlResponse) => {
+    // Preserve the original URL from the data or use the one from the response
+    const originalUrl = data.originalUrl || data.url;
+
     // Update the stats display with proper type handling
     setChatbotStats({
       // Ensure pagesCrawled is always a number
@@ -35,11 +38,15 @@ const Crawler = () => {
         : Number(data.stats.vectorsCreated) || 0,
 
       sampleQuestions: data.sampleQuestions || [],
-      url: data.url
+      // Use the original URL to ensure consistency
+      url: originalUrl
     });
 
     // Show completion and set chatbot ready
     setIsChatbotReady(true);
+
+    // Log the URL for debugging
+    console.log("Using URL for chatbot:", originalUrl);
   };
 
   return (

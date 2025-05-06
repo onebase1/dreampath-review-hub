@@ -66,7 +66,8 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
         },
         body: JSON.stringify({
           message: input,
-          url: url
+          // Use the original URL from the stats object, not the potentially modified URL from the response
+          originalUrl: url
         }),
       });
 

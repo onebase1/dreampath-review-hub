@@ -21,6 +21,7 @@ export interface CrawlResponse {
     vectorsCreated: number | string;
   };
   url: string;
+  originalUrl?: string; // Added to preserve the original URL entered by the user
   sampleQuestions: string[];
 }
 
@@ -42,7 +43,7 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!url) {
       toast({
         title: "Please enter a URL",
@@ -65,7 +66,7 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
     setIsProcessing(true);
     setCurrentStep(0);
     setProgress(0);
-    
+
     try {
       // Update API endpoint to match n8n webhook configuration
       const response = await fetch('http://localhost:5678/webhook-test/index', {
@@ -73,16 +74,20 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url }),
+        body: JSON.stringify({
+          url: url,
+          // Add the original URL as a separate field to ensure it's preserved
+          originalUrl: url
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
-      
+
       // Process the response directly instead of polling
       const data: CrawlResponse = await response.json();
-      
+
       if (data.success) {
         // Simulate processing steps for better UX
         simulateProcessingSteps(
@@ -94,9 +99,10 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
             setIsProcessing(false);
             onSuccess({
               ...data,
-              url
+              url: data.url,
+              originalUrl: url // Pass the original URL entered by the user
             });
-            
+
             toast({
               title: "Chatbot Created Successfully",
               description: "Your website has been processed and chatbot is ready for use",
@@ -106,7 +112,7 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
       } else {
         throw new Error("Processing failed");
       }
-      
+
     } catch (error) {
       console.error('Error submitting URL:', error);
       toast({
@@ -129,22 +135,22 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
           className="flex-1"
           disabled={isProcessing}
         />
-        <Button 
-          type="submit" 
-          disabled={isProcessing} 
+        <Button
+          type="submit"
+          disabled={isProcessing}
           className="min-w-[150px]"
           onClick={handleSubmit}
         >
-          {isProcessing ? 
+          {isProcessing ?
             <span className="flex items-center gap-2">
               <Loader className="animate-spin h-4 w-4" />
               Processing...
-            </span> : 
+            </span> :
             "Generate Chatbot"
           }
         </Button>
       </div>
-      
+
       <CrawlStepsProgress
         isProcessing={isProcessing}
         currentStep={currentStep}
