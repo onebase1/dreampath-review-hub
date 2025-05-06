@@ -15,9 +15,9 @@ interface CrawlerFormProps {
 export interface CrawlResponse {
   success: boolean;
   stats: {
-    pagesCrawled: number;
-    contentExtracted: string;
-    vectorsCreated: number;
+    pagesCrawled: number | string;
+    contentExtracted: string | number;
+    vectorsCreated: number | string;
   };
   url: string;
   sampleQuestions: string[];

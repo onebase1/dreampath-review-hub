@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle } from "lucide-react";
@@ -15,6 +14,14 @@ interface ChatbotPreviewProps {
 }
 
 export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
+  // Format content extracted based on its type
+  const formatContentExtracted = () => {
+    if (typeof stats.contentExtracted === 'number') {
+      return `${stats.contentExtracted} KB`;
+    }
+    return stats.contentExtracted;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2">
@@ -88,7 +95,7 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-500">Content Extracted</span>
-                  <span className="font-medium">{typeof stats.contentExtracted === 'string' ? stats.contentExtracted : `${stats.contentExtracted} KB`}</span>
+                  <span className="font-medium">{formatContentExtracted()}</span>
                 </div>
                 <Progress value={100} className="h-1" />
               </div>

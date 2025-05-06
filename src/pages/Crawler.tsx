@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,11 +19,21 @@ const Crawler = () => {
   });
 
   const handleCrawlSuccess = (data: CrawlResponse) => {
-    // Update the stats display
+    // Update the stats display with proper type handling
     setChatbotStats({
-      pagesCrawled: data.stats.pagesCrawled,
+      // Convert to number if it's a string
+      pagesCrawled: typeof data.stats.pagesCrawled === 'string' 
+        ? parseInt(data.stats.pagesCrawled, 10) || 0
+        : data.stats.pagesCrawled || 0,
+        
+      // Keep content extracted as is
       contentExtracted: data.stats.contentExtracted,
-      vectorsCreated: data.stats.vectorsCreated,
+      
+      // Convert to number if it's a string
+      vectorsCreated: typeof data.stats.vectorsCreated === 'string'
+        ? parseInt(data.stats.vectorsCreated, 10) || 0 
+        : data.stats.vectorsCreated || 0,
+        
       sampleQuestions: data.sampleQuestions || [],
       url: data.url
     });
