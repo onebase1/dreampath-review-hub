@@ -23,6 +23,7 @@ export interface CrawlResponse {
   questions?: string[];
   url?: string;
   originalUrl?: string;
+  sampleQuestions?: string[]; // Add this property to fix the error
 }
 
 export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
@@ -108,12 +109,19 @@ export const CrawlerForm = ({ onSuccess }: CrawlerFormProps) => {
       // Successfully processed
       setProgress(100);
       
-      // Call onSuccess with the response data
-      onSuccess({
+      // Format the response to match what the parent component expects
+      const formattedResponse: CrawlResponse = {
         ...data,
         url: data.url || processedUrl,
-        originalUrl: processedUrl
-      });
+        originalUrl: processedUrl,
+        // Make sure questions property is set correctly
+        questions: data.questions || [],
+        // Make sure sampleQuestions is set, using questions as fallback
+        sampleQuestions: data.questions || []
+      };
+      
+      // Call onSuccess with the formatted response data
+      onSuccess(formattedResponse);
 
       toast({
         title: "Success!",

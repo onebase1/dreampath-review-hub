@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -62,21 +61,8 @@ const Crawler = () => {
         : Number(statsObj.vectorsCreated) || 0;
     }
 
-    // Parse sample questions if available
-    let questions: string[] = [];
-    if (data.questions && Array.isArray(data.questions)) {
-      questions = data.questions;
-    } else if (data.sampleQuestions) {
-      if (typeof data.sampleQuestions === 'string') {
-        try {
-          questions = JSON.parse(data.sampleQuestions);
-        } catch (e) {
-          console.error("Failed to parse sample questions:", e);
-        }
-      } else if (Array.isArray(data.sampleQuestions)) {
-        questions = data.sampleQuestions;
-      }
-    }
+    // Get questions from the appropriate property
+    const questions = data.questions || data.sampleQuestions || [];
 
     // Update the stats display with proper type handling
     setChatbotStats({
