@@ -1,9 +1,10 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Send, Loader } from "lucide-react";
+import { CheckCircle, Send, Maximize2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChatbotPreviewProps {
   stats: {
@@ -16,6 +17,8 @@ interface ChatbotPreviewProps {
 }
 
 export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
+  const [expanded, setExpanded] = useState(false);
+  
   // Format content extracted based on its type
   const formatContentExtracted = () => {
     if (typeof stats.contentExtracted === 'number') {
@@ -32,76 +35,93 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
   // Ensure sampleQuestions is an array for safe rendering
   const questions = Array.isArray(stats.sampleQuestions) ? stats.sampleQuestions : [];
 
-  // For Phase 1, we'll show a read-only interface
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Chatbot Preview</CardTitle>
-            <CardDescription>
-              Preview of the chatbot for your website
-            </CardDescription>
+      <div className={`${expanded ? 'md:col-span-3' : 'md:col-span-2'}`}>
+        <Card className="h-full shadow-md border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Chatbot Preview</CardTitle>
+              <CardDescription>
+                Preview of the chatbot for your website
+              </CardDescription>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setExpanded(!expanded)}
+              className="ml-2"
+              title={expanded ? "Collapse view" : "Expand view"}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="h-[420px] border rounded-md bg-gray-50 flex flex-col">
-              <div className="bg-dreampath-purple p-4 text-white">
-                <div className="font-semibold">Website Assistant</div>
+            <div className="border rounded-md overflow-hidden shadow-sm h-[500px] flex flex-col bg-gray-50">
+              {/* Chat header */}
+              <div className="bg-dreampath-purple p-3 flex items-center text-white">
+                <MessageSquare className="h-5 w-5 mr-2" />
+                <div className="font-medium">Website Assistant</div>
               </div>
               
-              <div className="p-4 flex-1 bg-gray-50 overflow-y-auto">
-                <div className="flex flex-col space-y-3">
+              {/* Chat messages area with fixed height and scrolling */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="flex flex-col space-y-4">
                   {/* Welcome message */}
-                  <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm">
+                  <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
                     Hello! I'm your AI assistant for {url}. How can I help you today?
                   </div>
 
                   {/* If we have questions, show the first one as an example */}
                   {questions.length > 0 && (
                     <>
-                      <div className="bg-dreampath-purple text-white self-end rounded-lg p-3 max-w-[80%] text-sm">
+                      <div className="bg-dreampath-purple text-white self-end rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
                         {questions[0]}
                       </div>
                       
-                      <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm">
-                        Based on the website content, I can provide you with detailed information about this topic. The website covers several key points...
+                      <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm shadow-sm">
+                        Based on the website content, I can provide you with detailed information about this topic. The website covers several key points including services offered, eligibility criteria, and available support options.
                       </div>
                     </>
                   )}
                 </div>
-              </div>
+              </ScrollArea>
               
-              {/* Sample questions section */}
-              <div className="p-3 border-t">
-                <p className="text-sm text-gray-500 mb-2">Try asking about:</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {questions.map((question, index) => (
+              {/* Sample questions chips */}
+              <div className="p-3 border-t bg-white">
+                <p className="text-xs text-gray-500 mb-2">Try asking about:</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {questions.slice(0, 3).map((question, index) => (
                     <div
                       key={index}
-                      className="bg-gray-100 text-sm p-2 rounded cursor-pointer hover:bg-gray-200"
+                      className="bg-gray-100 text-xs p-2 rounded-full cursor-pointer hover:bg-gray-200 transition-colors"
                       onClick={() => handleSampleQuestionClick(question)}
                     >
-                      {question}
+                      {question.length > 30 ? question.substring(0, 30) + '...' : question}
                     </div>
                   ))}
+                  {questions.length > 3 && (
+                    <div className="bg-gray-100 text-xs p-2 rounded-full cursor-pointer hover:bg-gray-200 transition-colors">
+                      +{questions.length - 3} more
+                    </div>
+                  )}
                 </div>
                 
-                {/* Phase 2 notice */}
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm">
-                  <p className="font-medium flex items-center justify-between">
-                    <span>This is a preview only.</span>
-                    <Button 
-                      variant="outline"
-                      className="border-dreampath-purple text-dreampath-purple hover:bg-dreampath-purple hover:text-white"
-                      disabled
-                    >
-                      Enable Live Chat
-                    </Button>
-                  </p>
+                {/* Preview notice */}
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-md p-2 text-xs">
+                  <span className="font-medium text-amber-800">This is a preview only.</span>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="border-dreampath-purple text-dreampath-purple hover:bg-dreampath-purple hover:text-white"
+                    disabled
+                  >
+                    Enable Live Chat
+                  </Button>
                 </div>
                 
-                {/* Disabled input for visual consistency */}
-                <div className="mt-4 flex">
+                {/* Input field */}
+                <div className="mt-3 flex">
                   <input
                     type="text"
                     placeholder="Type your question... (Preview only)"
@@ -121,65 +141,69 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
         </Card>
       </div>
 
-      <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Website Data</CardTitle>
-            <CardDescription>
-              Information extracted from your website
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-500">Pages Crawled</span>
-                  <span className="font-medium">{stats.pagesCrawled}</span>
+      {!expanded && (
+        <div className="md:col-span-1">
+          <Card className="h-full shadow-md border-gray-100">
+            <CardHeader>
+              <CardTitle>Website Data</CardTitle>
+              <CardDescription>
+                Information extracted from your website
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-500">Pages Crawled</span>
+                    <span className="font-medium">{stats.pagesCrawled}</span>
+                  </div>
+                  <Progress value={100} className="h-2" />
                 </div>
-                <Progress value={100} className="h-1" />
-              </div>
 
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-500">Content Extracted</span>
-                  <span className="font-medium">{formatContentExtracted()}</span>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-500">Content Extracted</span>
+                    <span className="font-medium">{formatContentExtracted()}</span>
+                  </div>
+                  <Progress value={100} className="h-2" />
                 </div>
-                <Progress value={100} className="h-1" />
-              </div>
 
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-500">Vectors Created</span>
-                  <span className="font-medium">{stats.vectorsCreated}</span>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-500">Vectors Created</span>
+                    <span className="font-medium">{stats.vectorsCreated}</span>
+                  </div>
+                  <Progress value={100} className="h-2" />
                 </div>
-                <Progress value={100} className="h-1" />
-              </div>
-            </div>
 
-            <div className="mt-6">
-              <h3 className="font-medium text-sm text-gray-700 mb-2">Sample Questions</h3>
-              <ul className="space-y-2">
-                {questions && questions.length > 0 ? (
-                  questions.map((question, index) => (
-                    <li
-                      key={index}
-                      className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSampleQuestionClick(question)}
-                    >
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
-                      <span>{question}</span>
-                    </li>
-                  ))
-                ) : (
-                  <li className="bg-gray-50 p-2 rounded text-sm">
-                    <span>No sample questions available</span>
-                  </li>
-                )}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                <div>
+                  <h3 className="font-medium text-sm text-gray-700 mb-2">Sample Questions</h3>
+                  <ScrollArea className="h-[180px]">
+                    <ul className="space-y-2">
+                      {questions && questions.length > 0 ? (
+                        questions.map((question, index) => (
+                          <li
+                            key={index}
+                            className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => handleSampleQuestionClick(question)}
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
+                            <span>{question}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="bg-gray-50 p-2 rounded text-sm">
+                          <span>No sample questions available</span>
+                        </li>
+                      )}
+                    </ul>
+                  </ScrollArea>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

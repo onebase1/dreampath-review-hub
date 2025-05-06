@@ -18,6 +18,7 @@ const Crawler = () => {
     sampleQuestions: [] as string[],
     url: ""
   });
+  const [activeTab, setActiveTab] = useState<string>("preview");
 
   const handleCrawlSuccess = (data: CrawlResponse) => {
     // Preserve the original URL from the data or use the one from the response
@@ -116,16 +117,16 @@ const Crawler = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">Website Crawler & Chatbot Generator</h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Create an AI-powered chatbot from any website in <span className="font-semibold text-dreampath-dark-purple">under 2 minutes</span>.
+          Create an AI-powered chatbot from any website in <span className="font-semibold text-dreampath-purple">under 2 minutes</span>.
           Just enter the URL and we'll do the rest.
         </p>
       </div>
 
-      <Card className="mb-8 border-2 border-gray-100 shadow-lg">
+      <Card className="mb-8 border-2 border-gray-100 shadow-lg animate-fade-in">
         <CardHeader>
           <CardTitle className="text-2xl">Enter Website URL</CardTitle>
           <CardDescription>
@@ -139,21 +140,21 @@ const Crawler = () => {
 
       {isChatbotReady && (
         <div className="animate-fade-in">
-          <Tabs defaultValue="preview" className="w-full">
-            <TabsList className="grid grid-cols-4 mb-8">
-              <TabsTrigger value="preview" className="flex items-center gap-2">
+          <Tabs defaultValue="preview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-4 mb-6 shadow-sm">
+              <TabsTrigger value="preview" className="flex items-center gap-2 py-3">
                 <Globe className="h-4 w-4" />
                 <span>Preview</span>
               </TabsTrigger>
-              <TabsTrigger value="embed" className="flex items-center gap-2">
+              <TabsTrigger value="embed" className="flex items-center gap-2 py-3">
                 <Code className="h-4 w-4" />
                 <span>Embed</span>
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TabsTrigger value="analytics" className="flex items-center gap-2 py-3">
                 <BarChart2 className="h-4 w-4" />
                 <span>Analytics</span>
               </TabsTrigger>
-              <TabsTrigger value="customize" className="flex items-center gap-2">
+              <TabsTrigger value="customize" className="flex items-center gap-2 py-3">
                 <Settings className="h-4 w-4" />
                 <span>Customize</span>
               </TabsTrigger>
