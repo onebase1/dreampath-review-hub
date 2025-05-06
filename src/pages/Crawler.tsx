@@ -75,7 +75,8 @@ const Crawler = () => {
           questions = Array.isArray(parsedQuestions) ? parsedQuestions : [];
         } catch (e) {
           // If parsing fails, split by commas as a fallback
-          questions = data.questions.split(',').map(q => q.trim()).filter(Boolean);
+          questions = typeof data.questions === 'string' ? 
+            data.questions.split(',').map(q => q.trim()).filter(Boolean) : [];
         }
       }
     } else if (data.sampleQuestions) {
@@ -88,7 +89,8 @@ const Crawler = () => {
           questions = Array.isArray(parsedQuestions) ? parsedQuestions : [];
         } catch (e) {
           // If parsing fails, split by commas as a fallback
-          questions = data.sampleQuestions.split(',').map(q => q.trim()).filter(Boolean);
+          questions = typeof data.sampleQuestions === 'string' ? 
+            data.sampleQuestions.split(',').map(q => q.trim()).filter(Boolean) : [];
         }
       }
     }
