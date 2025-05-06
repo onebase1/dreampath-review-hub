@@ -20,7 +20,6 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
 
   try {
     // Send the request to the webhook
-    // Using a more reliable approach for cross-origin requests
     const webhookResponse = fetch('http://localhost:5678/webhook-test/index', {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
