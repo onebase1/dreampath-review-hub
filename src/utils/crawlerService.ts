@@ -27,8 +27,8 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
     },
     mode: 'no-cors', // This prevents CORS errors but won't return usable data
     body: JSON.stringify({ 
-      url: processedUrl,
-      originalUrl: processedUrl 
+      url: processedUrl
+      // Removed originalUrl parameter to avoid duplication
     })
   }).catch(err => console.log("CORS request attempted:", err));
   
