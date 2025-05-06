@@ -126,7 +126,7 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
     
     if (data.error) {
       // Update session with error message
-      const errorSession = {
+      const errorSession: ChatSession = {
         ...updatedSession,
         messages: [
           ...updatedSession.messages,
@@ -140,7 +140,7 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
           }
         ],
         questionsAsked: data.questions_asked || session.questionsAsked,
-        status: data.status || session.status
+        status: (data.status as 'trial' | 'lead' | 'customer') || session.status
       };
       
       updateSessionInStorage(errorSession);
@@ -153,7 +153,7 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
     }
 
     // Update session with bot response
-    const finalSession = {
+    const finalSession: ChatSession = {
       ...updatedSession,
       messages: [
         ...updatedSession.messages,
@@ -177,7 +177,7 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
     console.error('Error in askQuestion:', error);
     
     // Update session with error message
-    const errorSession = {
+    const errorSession: ChatSession = {
       ...session,
       messages: [
         ...session.messages,
@@ -226,7 +226,7 @@ export const updateUserInfo = async (
     // Update local session
     const currentSession = getCurrentSession();
     if (currentSession) {
-      const updatedSession = {
+      const updatedSession: ChatSession = {
         ...currentSession,
         status: 'lead'
       };
