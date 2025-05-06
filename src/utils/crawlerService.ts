@@ -35,6 +35,17 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
       // Try to parse the response as JSON
       data = await response.json();
       console.log("Webhook response received:", data);
+      
+      // Parse questions if they exist and are in JSON string format
+      if (data && data.questions && typeof data.questions === 'string') {
+        try {
+          data.questions = JSON.parse(data.questions);
+          console.log("Parsed questions:", data.questions);
+        } catch (err) {
+          console.warn("Could not parse questions as JSON:", err);
+          data.questions = [];
+        }
+      }
     } catch (err) {
       console.warn("Could not parse webhook response as JSON, using mock data instead");
       // If parsing fails, use mock data
@@ -43,13 +54,20 @@ export const processCrawlerUrl = async (url: string): Promise<CrawlResponse> => 
     
     // If we have valid data from the webhook, use it
     if (data && data.success) {
+      // Ensure questions and sampleQuestions are arrays
+      const parsedQuestions = Array.isArray(data.questions) ? 
+        data.questions : 
+        (typeof data.questions === 'string' ? 
+          [] : // We already tried to parse it above, if it's still a string, use empty array
+          []);
+      
       return {
         success: data.success,
         message: data.message || "Website successfully crawled",
-        questions: data.questions || [],
+        questions: parsedQuestions,
         url: processedUrl,
         originalUrl: processedUrl,
-        sampleQuestions: data.questions || [],
+        sampleQuestions: parsedQuestions, // Now it's guaranteed to be an array
         stats: data.stats || {
           pagesCrawled: 5,
           contentExtracted: "150 KB",

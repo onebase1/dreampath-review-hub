@@ -29,6 +29,9 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
     // In Phase 1, this is just for logging - no actual chat functionality
   };
 
+  // Ensure sampleQuestions is an array for safe rendering
+  const questions = Array.isArray(stats.sampleQuestions) ? stats.sampleQuestions : [];
+
   // For Phase 1, we'll show a read-only interface
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -54,10 +57,10 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
                   </div>
 
                   {/* If we have questions, show the first one as an example */}
-                  {stats.sampleQuestions.length > 0 && (
+                  {questions.length > 0 && (
                     <>
                       <div className="bg-dreampath-purple text-white self-end rounded-lg p-3 max-w-[80%] text-sm">
-                        {stats.sampleQuestions[0]}
+                        {questions[0]}
                       </div>
                       
                       <div className="bg-gray-200 text-gray-800 self-start rounded-lg p-3 max-w-[80%] text-sm">
@@ -72,7 +75,7 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
               <div className="p-3 border-t">
                 <p className="text-sm text-gray-500 mb-2">Try asking about:</p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {stats.sampleQuestions.map((question, index) => (
+                  {questions.map((question, index) => (
                     <div
                       key={index}
                       className="bg-gray-100 text-sm p-2 rounded cursor-pointer hover:bg-gray-200"
@@ -156,8 +159,8 @@ export const ChatbotPreview = ({ stats, url }: ChatbotPreviewProps) => {
             <div className="mt-6">
               <h3 className="font-medium text-sm text-gray-700 mb-2">Sample Questions</h3>
               <ul className="space-y-2">
-                {stats.sampleQuestions && stats.sampleQuestions.length > 0 ? (
-                  stats.sampleQuestions.map((question, index) => (
+                {questions && questions.length > 0 ? (
+                  questions.map((question, index) => (
                     <li
                       key={index}
                       className="bg-gray-50 p-2 rounded text-sm flex items-start cursor-pointer hover:bg-gray-100"

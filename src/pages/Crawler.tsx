@@ -62,8 +62,36 @@ const Crawler = () => {
         : Number(statsObj.vectorsCreated) || 0;
     }
 
-    // Get questions from the appropriate property
-    const questions = data.questions || data.sampleQuestions || [];
+    // Ensure questions are properly processed regardless of format
+    let questions: string[] = [];
+    
+    if (data.questions) {
+      if (Array.isArray(data.questions)) {
+        questions = data.questions;
+      } else if (typeof data.questions === 'string') {
+        try {
+          // Try to parse the questions if they're a JSON string
+          const parsedQuestions = JSON.parse(data.questions);
+          questions = Array.isArray(parsedQuestions) ? parsedQuestions : [];
+        } catch (e) {
+          // If parsing fails, split by commas as a fallback
+          questions = data.questions.split(',').map(q => q.trim()).filter(Boolean);
+        }
+      }
+    } else if (data.sampleQuestions) {
+      if (Array.isArray(data.sampleQuestions)) {
+        questions = data.sampleQuestions;
+      } else if (typeof data.sampleQuestions === 'string') {
+        try {
+          // Try to parse the sampleQuestions if they're a JSON string
+          const parsedQuestions = JSON.parse(data.sampleQuestions);
+          questions = Array.isArray(parsedQuestions) ? parsedQuestions : [];
+        } catch (e) {
+          // If parsing fails, split by commas as a fallback
+          questions = data.sampleQuestions.split(',').map(q => q.trim()).filter(Boolean);
+        }
+      }
+    }
 
     // Update the stats display with proper type handling
     setChatbotStats({
