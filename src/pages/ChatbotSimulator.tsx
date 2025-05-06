@@ -43,8 +43,8 @@ const ChatbotSimulator = () => {
       <Card className="mb-6 border-amber-200 bg-amber-50 shadow-sm">
         <CardContent className="py-4">
           <p className="text-amber-800">
-            This is a simulation of the chatbot UI. You can interact with the interface to see how it would look 
-            without having to run a real crawl. Use this page to refine the design before implementing changes on the main crawler.
+            This is a simulation environment for testing the chatbot interface. You can interact with the preview 
+            to see how users will experience your chatbot without running an actual website crawl.
           </p>
         </CardContent>
       </Card>
