@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { sendChatMessageToN8n, updateChatSessionWithN8nResponse } from "./n8nChatService";
 
 // Types
 export interface ChatMessage {
@@ -93,6 +94,37 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
   error?: string;
 }> => {
   try {
+    // Check if user has reached the limit of free questions
+    if (session.questionsAsked >= MAX_FREE_QUESTIONS && session.status === 'trial') {
+      // Update session with error message
+      const errorSession: ChatSession = {
+        ...session,
+        messages: [
+          ...session.messages,
+          {
+            id: uuidv4(),
+            content: question,
+            isUser: true,
+            timestamp: new Date()
+          },
+          {
+            id: uuidv4(),
+            content: "You've reached your limit of 5 free questions. Please provide your contact information to continue.",
+            isUser: false,
+            timestamp: new Date()
+          }
+        ]
+      };
+      
+      updateSessionInStorage(errorSession);
+      
+      return {
+        answer: "Free question limit reached",
+        questionsRemaining: 0,
+        error: "Free question limit reached"
+      };
+    }
+
     // Add user message to session
     const updatedSession = {
       ...session,
@@ -109,22 +141,10 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
     
     updateSessionInStorage(updatedSession);
 
-    // Send request to edge function
-    const response = await fetch(`https://lmifuqesostqcfyshtdl.supabase.co/functions/v1/generate-embedding`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: question,
-        website_url: session.websiteUrl,
-        session_id: session.sessionId
-      })
-    });
-
-    const data = await response.json();
+    // Send request to n8n workflow
+    const response = await sendChatMessageToN8n(question, session);
     
-    if (data.error) {
+    if (response.error) {
       // Update session with error message
       const errorSession: ChatSession = {
         ...updatedSession,
@@ -132,45 +152,49 @@ export const askQuestion = async (question: string, session: ChatSession): Promi
           ...updatedSession.messages,
           {
             id: uuidv4(),
-            content: data.error === "Free question limit reached" 
+            content: response.error === "Free question limit reached" 
               ? "You've reached your limit of 5 free questions. Please provide your contact information to continue."
               : "Sorry, I encountered an error while processing your question.",
             isUser: false,
             timestamp: new Date()
           }
-        ],
-        questionsAsked: data.questions_asked || session.questionsAsked,
-        status: (data.status as 'trial' | 'lead' | 'customer') || session.status
+        ]
       };
       
       updateSessionInStorage(errorSession);
       
       return {
-        answer: data.error,
+        answer: response.error,
         questionsRemaining: MAX_FREE_QUESTIONS - errorSession.questionsAsked,
-        error: data.error
+        error: response.error
       };
     }
 
     // Update session with bot response
-    const finalSession: ChatSession = {
-      ...updatedSession,
-      messages: [
-        ...updatedSession.messages,
-        {
-          id: uuidv4(),
-          content: data.answer,
-          isUser: false,
-          timestamp: new Date()
-        }
-      ],
-      questionsAsked: data.questions_asked || session.questionsAsked + 1
-    };
+    const finalSession: ChatSession = updateChatSessionWithN8nResponse(
+      updatedSession,
+      question,
+      response.answer
+    );
     
+    // Update the questions_asked count in Supabase
+    const { error: updateError } = await supabase
+      .from("user_sessions")
+      .update({ 
+        questions_asked: finalSession.questionsAsked,
+        last_active_at: new Date().toISOString()
+      })
+      .eq("session_id", session.sessionId);
+
+    if (updateError) {
+      console.error('Error updating session in Supabase:', updateError);
+    }
+    
+    // Save updated session to localStorage
     updateSessionInStorage(finalSession);
     
     return {
-      answer: data.answer,
+      answer: response.answer,
       questionsRemaining: MAX_FREE_QUESTIONS - finalSession.questionsAsked
     };
   } catch (error) {
