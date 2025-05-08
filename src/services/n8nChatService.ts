@@ -15,6 +15,10 @@ interface N8nChatRequest {
 
 interface N8nChatResponse {
   answer: string;
+  relevantSources?: {
+    content: string;
+    similarity: number;
+  }[];
   error?: string;
 }
 
@@ -61,8 +65,11 @@ export const sendChatMessageToN8n = async (
       };
     }
 
+    // If we have relevant sources, we could add them to the answer
+    let formattedAnswer = data.answer || "I couldn't generate a response. Please try again.";
+    
     return {
-      answer: data.answer || "I couldn't generate a response. Please try again."
+      answer: formattedAnswer
     };
   } catch (error) {
     console.error("Error in sendChatMessageToN8n:", error);

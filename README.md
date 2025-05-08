@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -73,121 +74,12 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
 
-                                             CURRENT N8N WORKFLOW -- NEEDS UPDATING
-
+                                             UPDATED N8N WORKFLOW
 
 
 {
   "name": "Phase 2 Chatbot",
   "nodes": [
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Answer the following question about the website {{$json.websiteUrl || $json.website || \"the website\"}}:\n\nUser question: {{$json.question || $json.message || $json.input || \"Tell me about this website\"}}\n\n",
-        "options": {
-          "systemMessage": "=You are an AI assistant that provides information about specific websites based on their content. You only provide information that is directly found in the context provided to you - never make up information.\n\nYour responses should:\n1. Be concise and directly address the user's question\n2. Only use information from the context provided\n3. Include attribution like \"Based on the website content...\"\n4. If you don't know the answer, say \"I don't see information about that in the website content\" rather than making something up\n\nImportant guidelines:\n- Never claim to be the website or company - you are an AI assistant providing information about the website\n- If the context doesn't contain relevant information to answer the question, be honest about that limitation\n- Focus on providing factual information rather than opinions\n- Maintain a helpful, professional tone"
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.9,
-      "position": [
-        320,
-        -360
-      ],
-      "id": "cfc15508-94fc-4662-879d-6cc2c5263dc7",
-      "name": "AI Agent"
-    },
-    {
-      "parameters": {
-        "model": "openai/gpt-4.1",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-      "typeVersion": 1,
-      "position": [
-        -260,
-        160
-      ],
-      "id": "0958345d-5b2d-4407-b697-08d615126133",
-      "name": "OpenRouter Chat Model",
-      "credentials": {
-        "openRouterApi": {
-          "id": "3gRwfSZx8LJpNoim",
-          "name": "OpenRouterAPI"
-        }
-      }
-    },
-    {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.toolThink",
-      "typeVersion": 1,
-      "position": [
-        100,
-        160
-      ],
-      "id": "d8a8f8b0-a47c-4e4d-b293-57d71028e135",
-      "name": "Think"
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "test"
-      },
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "position": [
-        -80,
-        160
-      ],
-      "id": "b7e6f5a0-22b5-4e64-b4ea-221269dd1b7e",
-      "name": "Simple Memory"
-    },
-    {
-      "parameters": {
-        "mode": "retrieve-as-tool",
-        "toolName": "Knowledge_tool",
-        "toolDescription": "Call to get the context and long term memory to answer queries from  chat faqs",
-        "tableName": {
-          "__rl": true,
-          "value": "documents",
-          "mode": "list",
-          "cachedResultName": "documents"
-        },
-        "topK": 10,
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-      "typeVersion": 1.1,
-      "position": [
-        460,
-        160
-      ],
-      "id": "bdf924ed-2433-401c-bbc4-d5a6bdcaaa2c",
-      "name": "Knowledge Tool",
-      "credentials": {
-        "supabaseApi": {
-          "id": "qkWejdXq5ormiqmR",
-          "name": "LiveChatZaraSuperBase"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "content": "# Chat interface Agentn - potentially not required since data is in Database\n",
-        "height": 1340,
-        "width": 1720,
-        "color": 5
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -740,
-        -620
-      ],
-      "id": "d4434c8a-a04c-4ef9-8917-4bad88125d75",
-      "name": "Sticky Note1",
-      "disabled": true
-    },
     {
       "parameters": {
         "httpMethod": "POST",
@@ -202,35 +94,37 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
         -360
       ],
       "id": "957b62ad-3355-4491-818b-5349450f05e8",
-      "name": "Webhook",
-      "webhookId": "51b63a7b-bd41-4564-9257-99ff48076636",
-      "disabled": true
+      "name": "Chat Webhook",
+      "webhookId": "51b63a7b-bd41-4564-9257-99ff48076636"
     },
     {
       "parameters": {
-        "jsCode": "// Get input from chat trigger\nconst input = $input.first().json || {};\nconst message = input.message || input.input || input.text || \"\";\nlet websiteUrl = \"\";\n\n// Check if message is setting website URL\nif (message && message.toLowerCase().indexOf('website:') === 0) {\n  // Extract website URL\n  websiteUrl = message.substring(message.indexOf(':') + 1).trim();\n  \n  // Return initial response\n  return {\n    json: {\n      response: `I'll answer questions about ${websiteUrl}. What would you like to know?`,\n      websiteUrl: websiteUrl,\n      isWebsiteSet: true\n    }\n  };\n} \n// Check if we have a question and a chatId parameter that might contain website\nelse if (message && input.chatId) {\n  // Try to extract website from chatId (if you're storing it there)\n  const parts = input.chatId.split('|');\n  if (parts.length > 1) {\n    websiteUrl = parts[1];\n  }\n  \n  // If we have a website, process as question\n  if (websiteUrl) {\n    return {\n      json: {\n        question: message,\n        websiteUrl: websiteUrl,\n        isQuestion: true\n      }\n    };\n  }\n}\n\n// Default case - prompt for website\nreturn {\n  json: {\n    response: \"Please start by telling me which website you want to chat about. Format: 'website: https://example.com'\",\n    isWebsiteSet: false\n  }\n};"
+        "jsCode": "// Extract data from incoming webhook request\nconst input = $input.first().json || {};\nconst query = input.query || '';\nconst sessionId = input.sessionId || '';\nconst websiteUrl = input.websiteUrl || '';\n\nif (!query || !sessionId || !websiteUrl) {\n  return {\n    json: {\n      error: 'Missing required parameters: query, sessionId, or websiteUrl',\n    }\n  };\n}\n\nreturn {\n  json: {\n    query,\n    sessionId,\n    websiteUrl,\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -180,
+        -300,
         -360
       ],
       "id": "829fc74d-5932-42d1-ae52-35e4db6dd615",
-      "name": "Code"
+      "name": "Validate Input"
     },
     {
       "parameters": {
+        "operation": "createEmbedding",
+        "model": "text-embedding-ada-002",
+        "text": "={{ $json.query }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
       "position": [
-        560,
-        380
+        -100,
+        -360
       ],
-      "id": "53ff119d-532b-4bd8-957f-6b25043393bb",
-      "name": "Embeddings OpenAI",
+      "id": "4a5e1b2c-8d6f-4e9a-9c7b-f2a3b4d5e6f7",
+      "name": "Generate Embedding",
       "credentials": {
         "openAiApi": {
           "id": "6F3QRMbNpK4b5kbD",
@@ -240,21 +134,71 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
     },
     {
       "parameters": {
-        "model": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini"
-        },
-        "options": {}
+        "functionCode": "// Prepare parameters for vector search\nconst embedding = $input.first().json.data[0].embedding;\nconst websiteUrl = $input.first().json.websiteUrl;\nconst sessionId = $input.first().json.sessionId;\nconst query = $input.first().json.query;\n\nreturn {\n  json: {\n    embedding,\n    websiteUrl,\n    sessionId,\n    query,\n    match_threshold: 0.75,\n    match_count: 5\n  }\n};"
       },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
       "position": [
-        -240,
-        -140
+        100,
+        -360
       ],
-      "id": "a97028a6-30d0-4ba6-a2b6-da35252a28c3",
-      "name": "OpenAI Chat Model1",
+      "id": "6a7b8c9d-0e1f-2g3h-4i5j-6k7l8m9n0o1p",
+      "name": "Prepare Search Query"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM match_documents(\n  $1::vector(1536),\n  $2::text,\n  $3::float,\n  $4::int\n);",
+        "additionalFields": {
+          "queryParams": "={{ [$json.embedding, $json.websiteUrl, $json.match_threshold, $json.match_count] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        300,
+        -360
+      ],
+      "id": "1q2r3s4t-5u6v-7w8x-9y0z-1a2b3c4d5e6f",
+      "name": "Search Vector DB",
+      "credentials": {
+        "postgres": {
+          "id": "qkWejdXq5ormiqmR",
+          "name": "LiveChatZaraSuperBase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Check if we found relevant documents\nconst documents = $input.first().json;\nconst prevInput = $input.all()[1].json;\n\n// Get original query, sessionId and websiteUrl\nconst originalQuery = prevInput.query;\nconst sessionId = prevInput.sessionId;\nconst websiteUrl = prevInput.websiteUrl;\n\n// Prepare context from retrieved documents\nlet contextText = \"\";\nlet websiteTitle = websiteUrl;\n\nif (documents && documents.length > 0) {\n  contextText = documents.map(doc => doc.content).join(\"\\n\\n\");\n  \n  // Try to extract website title from metadata if available\n  if (documents[0].metadata && documents[0].metadata.website_title) {\n    websiteTitle = documents[0].metadata.website_title;\n  }\n}\n\nreturn {\n  json: {\n    query: originalQuery,\n    context: contextText,\n    documents: documents,\n    sessionId: sessionId,\n    websiteUrl: websiteUrl,\n    websiteTitle: websiteTitle,\n    hasRelevantContent: documents && documents.length > 0\n  }\n};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -360
+      ],
+      "id": "7g8h9i0j-1k2l-3m4n-5o6p-7q8r9s0t1u2v",
+      "name": "Prepare Context"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "model": "gpt-4o-mini",
+        "prompt": "=You are a helpful assistant answering questions about the website \"{{ $json.websiteTitle }}\".\n\nUse ONLY the following information to answer the question:\n{{ $json.context }}\n\nIf the information is not in the text above, respond with \"I don't have that information from this website.\"\nAlways include the phrase \"According to {{ $json.websiteTitle }}\" in your answer.\n\nQuestion: {{ $json.query }}",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 500
+        }
+      },
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -360
+      ],
+      "id": "3w4x5y6z-7a8b-9c0d-1e2f-3g4h5i6j7k8l",
+      "name": "Generate Answer",
       "credentials": {
         "openAiApi": {
           "id": "6F3QRMbNpK4b5kbD",
@@ -264,100 +208,138 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
     },
     {
       "parameters": {
-        "options": {}
+        "functionCode": "// Update user session and format final response\nconst responseData = $input.first().json;\nconst contextData = $input.all()[1].json;\n\nlet answer = \"I don't have enough information from this website to answer your question.\";\n\nif (contextData.hasRelevantContent && responseData.text) {\n  answer = responseData.text.trim();\n}\n\nconst sessionId = contextData.sessionId;\nconst websiteUrl = contextData.websiteUrl;\n\nreturn {\n  json: {\n    answer: answer,\n    sessionId: sessionId,\n    websiteUrl: websiteUrl,\n    relevantSources: contextData.documents ? contextData.documents.map(doc => ({\n      content: doc.content.substring(0, 100) + \"...\",\n      similarity: doc.similarity\n    })).slice(0, 3) : []\n  }\n};"
       },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        -360
+      ],
+      "id": "9m0n1o2p-3q4r-5s6t-7u8v-9w0x1y2z3a4b",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Update user session with new question count\nUPDATE user_sessions\nSET questions_asked = questions_asked + 1,\n    last_active_at = NOW()\nWHERE session_id = $1::uuid\nRETURNING *;",
+        "additionalFields": {
+          "queryParams": "={{ [$json.sessionId] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -200
+      ],
+      "id": "5c6d7e8f-9g0h-1i2j-3k4l-5m6n7o8p9q0r",
+      "name": "Update Session",
+      "credentials": {
+        "postgres": {
+          "id": "qkWejdXq5ormiqmR",
+          "name": "LiveChatZaraSuperBase"
+        }
+      }
+    },
+    {
+      "parameters": {},
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [
-        680,
+        1100,
         -360
       ],
       "id": "3f6204c9-7857-44a4-8137-3541690f0dd9",
       "name": "Respond to Webhook"
     }
   ],
-  "pinData": {},
   "connections": {
-    "OpenRouter Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Think": {
-      "ai_tool": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Simple Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Knowledge Tool": {
-      "ai_tool": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook": {
+    "Chat Webhook": {
       "main": [
         [
           {
-            "node": "Code",
+            "node": "Validate Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code": {
+    "Validate Input": {
       "main": [
         [
           {
-            "node": "AI Agent",
+            "node": "Generate Embedding",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Embeddings OpenAI": {
-      "ai_embedding": [
+    "Generate Embedding": {
+      "main": [
         [
           {
-            "node": "Knowledge Tool",
-            "type": "ai_embedding",
+            "node": "Prepare Search Query",
+            "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent": {
+    "Prepare Search Query": {
       "main": [
         [
+          {
+            "node": "Search Vector DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Vector DB": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Generate Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Answer": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Update Session",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Respond to Webhook",
             "type": "main",
@@ -370,12 +352,6 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
   "active": true,
   "settings": {
     "executionOrder": "v1"
-  },
-  "versionId": "b9c962ef-8b4a-43e3-a2d3-f980029d6e77",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "51af8bffc3aa0c13c415e83528b3d07b48504ee1cffad0a6bbed7158e1feeb71"
-  },
-  "id": "tNJryvO2vYUEJX5H",
-  "tags": []
+  }
 }
+
