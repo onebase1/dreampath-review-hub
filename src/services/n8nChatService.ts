@@ -4,7 +4,7 @@ import { ChatMessage, ChatSession } from "@/services/chatbotService";
 import { v4 as uuidv4 } from "uuid";
 
 // Constants
-const N8N_CHAT_WEBHOOK_URL = "http://localhost:5678/webhook-test/chat";
+const N8N_CHAT_WEBHOOK_URL = "https://n8n-fpyfr-u38498.vm.elestio.app/webhook/chat";
 
 // Types
 interface N8nChatRequest {
